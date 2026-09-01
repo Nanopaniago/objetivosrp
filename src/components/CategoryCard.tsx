@@ -110,7 +110,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
         </div>
 
         {/* Goals Reference Grid: Meta Mensal & Meta Diária */}
-        <div className="mt-3.5 grid grid-cols-2 gap-2 bg-slate-50 rounded-xl p-2 border border-slate-100 text-xs">
+        <div className="mt-3.5 grid grid-cols-2 gap-2 bg-slate-50 rounded-xl p-2.5 border border-slate-100 text-xs">
           <div className="text-left pl-1">
             <span className="text-[10px] font-bold uppercase text-slate-400 block">Meta Mensal</span>
             <span className="font-bold text-slate-800 text-xs sm:text-sm">
@@ -119,10 +119,21 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
           </div>
 
           <div className="text-right pr-1 border-l border-slate-200">
-            <span className="text-[10px] font-bold uppercase text-blue-600 block">Meta Diária</span>
-            <span className="font-bold text-blue-900 text-xs sm:text-sm">
-              {dailyGoal !== null ? formatCategoryValue(dailyGoal, category.metricType) : '--'}
+            <div className="flex items-center justify-end gap-1">
+              <span className="text-[10px] font-bold uppercase text-blue-600">Meta Diária</span>
+            </div>
+            <span className="font-black text-blue-900 text-xs sm:text-sm block">
+              {isGoalReached
+                ? 'Concluída 🎯'
+                : dailyGoal !== null
+                ? `${formatCategoryValue(dailyGoal, category.metricType)}/dia`
+                : '--'}
             </span>
+            {!isGoalReached && calc.remainingWorkDays > 0 && remaining !== null && remaining > 0 && (
+              <span className="text-[9px] text-blue-600/80 font-medium block mt-0.5 truncate" title={calc.calculationFormula}>
+                {calc.remainingWorkDays}d a trabalhar
+              </span>
+            )}
           </div>
         </div>
 
@@ -165,13 +176,13 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
       </div>
 
       {/* Footer: Daily Pace Needed */}
-      <div className="mt-3.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-        <span className="flex items-center gap-1 text-slate-500 font-medium">
-          <Clock className="w-3.5 h-3.5 text-slate-400" />
-          Ritmo necessário:
+      <div className="mt-3.5 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs text-slate-600">
+        <span className="flex items-center gap-1 text-slate-500 font-medium shrink-0">
+          <Clock className="w-3.5 h-3.5 text-blue-600" />
+          Ritmo Diário:
         </span>
-        <span className={`font-bold ${isGoalReached ? 'text-emerald-600' : 'text-slate-800'}`}>
-          {isGoalReached ? 'Meta Atingida! 🎯' : statusMessage}
+        <span className={`font-bold text-right text-[11px] truncate ${isGoalReached ? 'text-emerald-600' : 'text-slate-800'}`} title={calc.calculationFormula}>
+          {isGoalReached ? 'Meta Atingida! 🎯' : calc.calculationFormula || statusMessage}
         </span>
       </div>
     </div>

@@ -247,6 +247,19 @@ export const WorkingDaysCounter: React.FC<WorkingDaysCounterProps> = ({
           <span>Fim do Mês (Dia {scheduleStats.totalMonthDays})</span>
         </div>
       </div>
+
+      {/* Dynamic Daily Goal Formula Notice */}
+      <div className="mt-3.5 pt-3 border-t border-slate-200/60 flex items-center justify-between gap-2 text-[11px] text-slate-600 bg-blue-50/50 -mx-5 -mb-5 p-3 rounded-b-2xl">
+        <div className="flex items-center gap-1.5 font-medium">
+          <Info className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+          <span>
+            <strong>Fórmula da Meta Diária Dinâmica:</strong> Valor restante em falta ÷ {scheduleStats.remainingWorkDays} dias úteis a trabalhar até ao término do mês.
+          </span>
+        </div>
+        <span className="text-[10px] font-bold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded shrink-0">
+          Atualização Contínua
+        </span>
+      </div>
     </div>
   );
 };

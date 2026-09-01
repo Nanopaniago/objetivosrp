@@ -101,6 +101,10 @@ export interface CategoryCalculation {
   category: GoalCategory;
   monthlyGoal: number | null;
   dailyGoal: number | null;
+  baseDailyGoal: number | null;
+  dynamicDailyGoal: number | null;
+  remainingWorkDays: number;
+  calculationFormula: string;
   accumulated: number;
   remaining: number | null;
   percentage: number | null;

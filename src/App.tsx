@@ -218,6 +218,7 @@ export default function App() {
         onClose={() => setIsResultUpdateModalOpen(false)}
         sellerId={displaySeller.id}
         sellerName={displaySeller.name}
+        allSellers={sellersList.length > 0 ? sellersList : users.filter(u => u.role === 'seller')}
         categories={categories}
         goals={goals}
         existingEntries={entries}

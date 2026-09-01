@@ -1,14 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { GoalCategory, DailyEntry, CategorySlug, MonthlyGoal } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { GoalCategory, DailyEntry, CategorySlug, MonthlyGoal, User } from '../types';
 import { CategoryIcon } from './CategoryIcon';
 import { formatCategoryValue } from '../utils/calculations';
-import { X, Save, Calendar, Check, AlertCircle, RefreshCw, Sparkles, TrendingUp } from 'lucide-react';
+import {
+  X,
+  Save,
+  Calendar,
+  Check,
+  AlertCircle,
+  RefreshCw,
+  Sparkles,
+  TrendingUp,
+  User as UserIcon,
+  ChevronDown,
+  Info,
+} from 'lucide-react';
 
 interface ResultUpdateModalProps {
   isOpen: boolean;
   onClose: () => void;
   sellerId: string;
-  sellerName: string;
+  sellerName?: string;
+  allSellers?: User[];
   categories: GoalCategory[];
   goals: MonthlyGoal[];
   existingEntries: DailyEntry[];
@@ -22,6 +35,7 @@ export const ResultUpdateModal: React.FC<ResultUpdateModalProps> = ({
   onClose,
   sellerId,
   sellerName,
+  allSellers = [],
   categories,
   goals,
   existingEntries,
@@ -29,30 +43,57 @@ export const ResultUpdateModal: React.FC<ResultUpdateModalProps> = ({
   currentYear,
   onSaveResultUpdate,
 }) => {
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
-  const [note, setNote] = useState<string>('');
+  // Compute valid date range for the active month
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+  const monthStr = currentMonth.toString().padStart(2, '0');
+  const minDate = `${currentYear}-${monthStr}-01`;
+  const maxDate = `${currentYear}-${monthStr}-${String(daysInMonth).padStart(2, '0')}`;
 
-  const [values, setValues] = useState<Record<CategorySlug, number>>({
-    plus_master: 0,
-    plus: 0,
-    megas_total: 0,
-    dm_classicas: 0,
-    dimobilli: 0,
-    peliculas: 0,
+  const [activeSellerId, setActiveSellerId] = useState<string>(sellerId);
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const today = new Date();
+    const isCurrentActiveMonth =
+      today.getFullYear() === currentYear && today.getMonth() + 1 === currentMonth;
+    if (isCurrentActiveMonth) {
+      return today.toISOString().split('T')[0];
+    }
+    return `${currentYear}-${monthStr}-${String(Math.min(daysInMonth, 24)).padStart(2, '0')}`;
+  });
+
+  const [note, setNote] = useState<string>('');
+  const [inputValues, setInputValues] = useState<Record<CategorySlug, string>>({
+    plus_master: '',
+    plus: '',
+    megas_total: '',
+    dm_classicas: '',
+    dimobilli: '',
+    peliculas: '',
   });
 
   const [isSavedToast, setIsSavedToast] = useState(false);
 
-  // Load the most recent result update or specific date entry for this seller
+  // Sync active seller if prop changes when opening
+  useEffect(() => {
+    if (isOpen) {
+      setActiveSellerId(sellerId);
+      const today = new Date();
+      const isCurrentActiveMonth =
+        today.getFullYear() === currentYear && today.getMonth() + 1 === currentMonth;
+      if (isCurrentActiveMonth) {
+        setSelectedDate(today.toISOString().split('T')[0]);
+      } else {
+        setSelectedDate(`${currentYear}-${monthStr}-${String(Math.min(daysInMonth, 24)).padStart(2, '0')}`);
+      }
+    }
+  }, [isOpen, sellerId, currentMonth, currentYear, monthStr, daysInMonth]);
+
+  // Load existing values for the active seller and current month
   useEffect(() => {
     if (!isOpen) return;
 
-    // Look for existing entry for this specific date or the latest update in this month
     const sellerMonthEntries = existingEntries
       .filter(e => {
-        if (e.sellerId !== sellerId) return false;
+        if (e.sellerId !== activeSellerId) return false;
         const [y, m] = e.date.split('-').map(Number);
         return y === currentYear && m === currentMonth;
       })
@@ -62,51 +103,94 @@ export const ResultUpdateModal: React.FC<ResultUpdateModalProps> = ({
         return timeB.localeCompare(timeA);
       });
 
+    // Find entry for specific selected date or the latest one for this month
     const currentOrLatest =
       sellerMonthEntries.find(e => e.date === selectedDate) || sellerMonthEntries[0];
 
     if (currentOrLatest) {
-      setValues({
-        plus_master: currentOrLatest.values.plus_master || 0,
-        plus: currentOrLatest.values.plus || 0,
-        megas_total: currentOrLatest.values.megas_total || 0,
-        dm_classicas: currentOrLatest.values.dm_classicas || 0,
-        dimobilli: currentOrLatest.values.dimobilli || 0,
-        peliculas: currentOrLatest.values.peliculas || 0,
+      const vals = currentOrLatest.values || {};
+      setInputValues({
+        plus_master: vals.plus_master !== undefined && vals.plus_master !== null ? String(vals.plus_master) : '',
+        plus: vals.plus !== undefined && vals.plus !== null ? String(vals.plus) : '',
+        megas_total: vals.megas_total !== undefined && vals.megas_total !== null ? String(vals.megas_total) : '',
+        dm_classicas: vals.dm_classicas !== undefined && vals.dm_classicas !== null ? String(vals.dm_classicas) : '',
+        dimobilli: vals.dimobilli !== undefined && vals.dimobilli !== null ? String(vals.dimobilli) : '',
+        peliculas: vals.peliculas !== undefined && vals.peliculas !== null ? String(vals.peliculas) : '',
       });
       setNote(currentOrLatest.note || '');
     } else {
-      setValues({
-        plus_master: 0,
-        plus: 0,
-        megas_total: 0,
-        dm_classicas: 0,
-        dimobilli: 0,
-        peliculas: 0,
+      setInputValues({
+        plus_master: '',
+        plus: '',
+        megas_total: '',
+        dm_classicas: '',
+        dimobilli: '',
+        peliculas: '',
       });
       setNote('');
     }
-  }, [selectedDate, sellerId, existingEntries, isOpen, currentMonth, currentYear]);
+  }, [activeSellerId, selectedDate, existingEntries, isOpen, currentMonth, currentYear]);
+
+  // Parse string inputs safely to numbers
+  const parsedValues = useMemo(() => {
+    const parseNum = (str: string): number => {
+      if (!str || str.trim() === '') return 0;
+      const clean = str.replace(/\s/g, '').replace(',', '.');
+      const val = parseFloat(clean);
+      return isNaN(val) ? 0 : Math.max(0, val);
+    };
+
+    return {
+      plus_master: parseNum(inputValues.plus_master),
+      plus: parseNum(inputValues.plus),
+      megas_total: parseNum(inputValues.megas_total),
+      dm_classicas: parseNum(inputValues.dm_classicas),
+      dimobilli: parseNum(inputValues.dimobilli),
+      peliculas: parseNum(inputValues.peliculas),
+    };
+  }, [inputValues]);
 
   if (!isOpen) return null;
 
-  const handleValueChange = (slug: CategorySlug, val: number) => {
-    setValues(prev => ({
+  const currentSellerObj = allSellers.find(s => s.id === activeSellerId) || {
+    id: activeSellerId,
+    name: sellerName || 'Colaborador',
+    role: 'seller',
+  };
+
+  const handleInputChange = (slug: CategorySlug, rawVal: string) => {
+    setInputValues(prev => ({
       ...prev,
-      [slug]: Math.max(0, val),
+      [slug]: rawVal,
+    }));
+  };
+
+  const handleQuickAdjust = (slug: CategorySlug, delta: number) => {
+    const current = parsedValues[slug] || 0;
+    const next = Math.max(0, Number((current + delta).toFixed(2)));
+    setInputValues(prev => ({
+      ...prev,
+      [slug]: String(next),
     }));
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Ensure selectedDate belongs to current month/year
+    let validDate = selectedDate;
+    const [dYear, dMonth] = selectedDate.split('-').map(Number);
+    if (dYear !== currentYear || dMonth !== currentMonth) {
+      validDate = `${currentYear}-${monthStr}-${String(Math.min(daysInMonth, 24)).padStart(2, '0')}`;
+    }
+
     const newUpdate: DailyEntry = {
-      id: `result-${sellerId}-${selectedDate}-${Date.now()}`,
-      sellerId,
-      date: selectedDate,
-      values,
-      note: note.trim() || 'Atualização do resultado consolidado do vendedor',
-      updatedBy: sellerName,
+      id: `result-${activeSellerId}-${validDate}-${Date.now()}`,
+      sellerId: activeSellerId,
+      date: validDate,
+      values: parsedValues,
+      note: note.trim() || `Resultado consolidado de ${currentSellerObj.name} em ${validDate}`,
+      updatedBy: currentSellerObj.name,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -116,95 +200,133 @@ export const ResultUpdateModal: React.FC<ResultUpdateModalProps> = ({
     setTimeout(() => {
       setIsSavedToast(false);
       onClose();
-    }, 900);
+    }, 800);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
       <div
         id="result-update-modal"
-        className="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden"
+        className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden my-auto"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-600 text-white shadow-xs">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/90 px-5 sm:px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-blue-600 text-white shadow-sm">
               <RefreshCw className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 leading-tight">Atualização do Resultado</h2>
+              <h2 className="text-lg font-bold text-slate-900 leading-tight">Atualizar Resultado</h2>
               <p className="text-xs text-slate-500">
-                Colaborador: <span className="font-bold text-slate-800">{sellerName}</span> &bull; {currentMonth.toString().padStart(2, '0')}/{currentYear}
+                Lançamento do acumulado consolidado &bull; Mês de Referência: <span className="font-bold text-blue-700">{monthStr}/{currentYear}</span>
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors"
+            className="rounded-xl p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Notice banner */}
-        <div className="bg-amber-50/80 border-b border-amber-200/60 px-6 py-2.5 flex items-start gap-2.5 text-xs text-amber-900">
-          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+        <div className="bg-blue-50/80 border-b border-blue-200/60 px-5 sm:px-6 py-2.5 flex items-start gap-2.5 text-xs text-blue-900">
+          <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
           <p>
-            <strong>Atenção:</strong> Esta atualização substitui os dados de resultado anteriores deste mês para o vendedor selecionado, mantendo a foto consolidada do desempenho atual.
+            Insira o <strong>valor total acumulado até à data</strong> para cada serviço. O sistema recalcula automaticamente as metas diárias restantes e as percentagens de cumprimento.
           </p>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSave} className="p-6">
-          {/* Date & Note Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+        <form onSubmit={handleSave} className="p-5 sm:p-6 space-y-4">
+          {/* Controls Bar: Seller Selector + Date + Note */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            {/* Seller Selector */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1.5">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1">
+                <UserIcon className="w-3.5 h-3.5 text-blue-600" />
+                Colaborador
+              </label>
+              {allSellers.length > 0 ? (
+                <select
+                  value={activeSellerId}
+                  onChange={e => setActiveSellerId(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:border-blue-500 focus:outline-none shadow-2xs cursor-pointer"
+                >
+                  {allSellers.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="px-2.5 py-1.5 bg-white rounded-lg border border-slate-300 text-xs font-bold text-slate-800">
+                  {currentSellerObj.name}
+                </div>
+              )}
+            </div>
+
+            {/* Reference Date */}
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-blue-600" />
                 Data de Referência
               </label>
               <input
                 type="date"
+                min={minDate}
+                max={maxDate}
                 value={selectedDate}
                 onChange={e => setSelectedDate(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition bg-white"
+                className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:border-blue-500 focus:outline-none bg-white shadow-2xs"
                 required
               />
             </div>
 
+            {/* Note */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                Observação (Opcional)
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                Observação
               </label>
               <input
                 type="text"
-                placeholder="Ex: Ponto de situação semanal..."
+                placeholder="Ex: Fechamento semanal"
                 value={note}
                 onChange={e => setNote(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition bg-white"
+                className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900 focus:border-blue-500 focus:outline-none bg-white shadow-2xs"
               />
             </div>
           </div>
 
-          {/* Categories Inputs */}
-          <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+          {/* Categories Inputs List */}
+          <div className="space-y-2.5 max-h-[48vh] overflow-y-auto pr-1">
             {categories.map(cat => {
-              const currentVal = values[cat.slug] || 0;
+              const currentInput = inputValues[cat.slug] ?? '';
+              const numericVal = parsedValues[cat.slug] || 0;
               const isCurrency = cat.metricType === 'currency';
 
-              // Find goal for category
+              // Find goal for active seller & current month
               const goal = goals.find(
-                g => g.sellerId === sellerId && g.categorySlug === cat.slug && g.month === currentMonth && g.year === currentYear
+                g =>
+                  g.sellerId === activeSellerId &&
+                  g.categorySlug === cat.slug &&
+                  g.month === currentMonth &&
+                  g.year === currentYear
               );
               const monthlyGoalVal = goal?.targetValue || 0;
-              const dailyGoalVal = goal?.dailyTargetValue;
-
-              const percent = monthlyGoalVal > 0 ? (currentVal / monthlyGoalVal) * 100 : null;
+              const percent = monthlyGoalVal > 0 ? (numericVal / monthlyGoalVal) * 100 : null;
+              const isReached = monthlyGoalVal > 0 && numericVal >= monthlyGoalVal;
 
               return (
                 <div
                   key={cat.slug}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition"
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border transition ${
+                    isReached
+                      ? 'bg-emerald-50/50 border-emerald-200'
+                      : 'bg-slate-50/60 border-slate-200 hover:bg-slate-50'
+                  }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2 rounded-lg bg-white border border-slate-200 text-slate-700 shadow-2xs">
@@ -212,10 +334,14 @@ export const ResultUpdateModal: React.FC<ResultUpdateModalProps> = ({
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <h4 className="text-sm font-bold text-slate-900 leading-none">{cat.name}</h4>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                          isCurrency ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-sky-50 text-sky-700 border-sky-200'
-                        }`}>
+                        <h4 className="text-sm font-bold text-slate-900 leading-tight">{cat.name}</h4>
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
+                            isCurrency
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-sky-50 text-sky-700 border-sky-200'
+                          }`}
+                        >
                           {isCurrency ? '€ Valor' : 'Peças (un)'}
                         </span>
                       </div>
@@ -223,16 +349,11 @@ export const ResultUpdateModal: React.FC<ResultUpdateModalProps> = ({
                       {/* Goal references info */}
                       <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-1 flex-wrap">
                         <span>
-                          Meta Mês: <strong className="text-slate-700">{formatCategoryValue(monthlyGoalVal, cat.metricType)}</strong>
+                          Meta: <strong className="text-slate-700">{formatCategoryValue(monthlyGoalVal, cat.metricType)}</strong>
                         </span>
-                        {dailyGoalVal !== undefined && dailyGoalVal !== null && dailyGoalVal > 0 && (
-                          <span className="text-blue-600 font-semibold">
-                            &bull; Meta Dia: <strong>{formatCategoryValue(dailyGoalVal, cat.metricType)}</strong>
-                          </span>
-                        )}
                         {percent !== null && (
-                          <span className={`font-bold ${percent >= 100 ? 'text-emerald-600' : 'text-slate-600'}`}>
-                            ({percent.toFixed(0)}%)
+                          <span className={`font-bold ${isReached ? 'text-emerald-700' : 'text-slate-600'}`}>
+                            &bull; {percent.toFixed(0)}% {isReached ? '🎯' : ''}
                           </span>
                         )}
                       </div>
@@ -247,17 +368,12 @@ export const ResultUpdateModal: React.FC<ResultUpdateModalProps> = ({
                           €
                         </span>
                         <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          value={currentVal === 0 ? '' : currentVal}
+                          type="text"
+                          inputMode="decimal"
+                          value={currentInput}
                           placeholder="0,00"
-                          onChange={e => {
-                            const raw = e.target.value;
-                            const parsed = parseFloat(raw.replace(',', '.'));
-                            handleValueChange(cat.slug, isNaN(parsed) ? 0 : parsed);
-                          }}
-                          className="w-32 sm:w-36 rounded-lg border border-slate-300 pl-8 pr-2.5 py-1.5 text-sm font-bold text-slate-900 text-right focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white"
+                          onChange={e => handleInputChange(cat.slug, e.target.value)}
+                          className="w-36 rounded-lg border border-slate-300 pl-8 pr-2.5 py-1.5 text-sm font-black text-slate-900 text-right focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white"
                         />
                       </div>
                     </div>
@@ -265,28 +381,23 @@ export const ResultUpdateModal: React.FC<ResultUpdateModalProps> = ({
                     <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
                       <button
                         type="button"
-                        onClick={() => handleValueChange(cat.slug, Math.max(0, Number((currentVal - 1).toFixed(2))))}
-                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 flex items-center justify-center text-sm shadow-2xs"
+                        onClick={() => handleQuickAdjust(cat.slug, -1)}
+                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 flex items-center justify-center text-sm shadow-2xs active:scale-95"
                       >
                         -
                       </button>
                       <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        value={currentVal === 0 ? '' : currentVal}
+                        type="text"
+                        inputMode="numeric"
+                        value={currentInput}
                         placeholder="0"
-                        onChange={e => {
-                          const raw = e.target.value;
-                          const parsed = parseFloat(raw.replace(',', '.'));
-                          handleValueChange(cat.slug, isNaN(parsed) ? 0 : parsed);
-                        }}
-                        className="w-16 text-center rounded-lg border border-slate-300 py-1 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none bg-white"
+                        onChange={e => handleInputChange(cat.slug, e.target.value)}
+                        className="w-16 text-center rounded-lg border border-slate-300 py-1.5 text-sm font-black text-slate-900 focus:border-blue-500 focus:outline-none bg-white"
                       />
                       <button
                         type="button"
-                        onClick={() => handleValueChange(cat.slug, Number((currentVal + 1).toFixed(2)))}
-                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 flex items-center justify-center text-sm shadow-2xs"
+                        onClick={() => handleQuickAdjust(cat.slug, 1)}
+                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 flex items-center justify-center text-sm shadow-2xs active:scale-95"
                       >
                         +
                       </button>
@@ -299,11 +410,11 @@ export const ResultUpdateModal: React.FC<ResultUpdateModalProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
             >
               Cancelar
             </button>
@@ -314,7 +425,7 @@ export const ResultUpdateModal: React.FC<ResultUpdateModalProps> = ({
               {isSavedToast ? (
                 <>
                   <Check className="w-4 h-4 text-emerald-300" />
-                  Resultado Gravado!
+                  Resultado Atualizado!
                 </>
               ) : (
                 <>

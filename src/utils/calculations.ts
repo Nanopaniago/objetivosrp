@@ -184,12 +184,14 @@ export function calculateCategoryPerformance(
   );
   const monthlyGoal = goalObj && goalObj.targetValue !== undefined ? Number(goalObj.targetValue) : null;
 
-  // Daily target defined or estimated
-  let dailyGoal: number | null = null;
+  // Base Daily Target (monthly goal / total work days of month or explicit setting)
+  let baseDailyGoal: number | null = null;
   if (goalObj && goalObj.dailyTargetValue !== undefined && goalObj.dailyTargetValue !== null && goalObj.dailyTargetValue > 0) {
-    dailyGoal = Number(goalObj.dailyTargetValue);
+    baseDailyGoal = Number(goalObj.dailyTargetValue);
   } else if (monthlyGoal && monthlyGoal > 0 && scheduleStats.totalMonthWorkDays > 0) {
-    dailyGoal = Number((monthlyGoal / scheduleStats.totalMonthWorkDays).toFixed(2));
+    baseDailyGoal = Number((monthlyGoal / scheduleStats.totalMonthWorkDays).toFixed(2));
+  } else if (monthlyGoal && monthlyGoal > 0) {
+    baseDailyGoal = Number((monthlyGoal / 22).toFixed(2));
   }
 
   // Filter entries/result updates for this seller and this month, sorted by latest
@@ -207,9 +209,14 @@ export function calculateCategoryPerformance(
 
   // The latest result update replaces previous results
   const latestUpdate = sellerEntries[0];
-  const accumulated = latestUpdate
-    ? Number((latestUpdate.values[category.slug] || 0).toFixed(2))
-    : 0;
+  const rawVal = latestUpdate?.values ? latestUpdate.values[category.slug] : 0;
+  let accumulated = 0;
+  if (typeof rawVal === 'number') {
+    accumulated = isNaN(rawVal) ? 0 : Number(rawVal.toFixed(2));
+  } else if (typeof rawVal === 'string') {
+    const parsed = parseFloat((rawVal as string).replace(/\s/g, '').replace(',', '.'));
+    accumulated = isNaN(parsed) ? 0 : Number(parsed.toFixed(2));
+  }
 
   const lastUpdatedDate = latestUpdate?.date;
 
@@ -217,7 +224,11 @@ export function calculateCategoryPerformance(
     return {
       category,
       monthlyGoal: null,
-      dailyGoal,
+      dailyGoal: null,
+      baseDailyGoal: null,
+      dynamicDailyGoal: null,
+      remainingWorkDays: scheduleStats.remainingWorkDays,
+      calculationFormula: 'Defina a meta mensal para calcular a meta diária',
       accumulated,
       remaining: null,
       percentage: null,
@@ -234,35 +245,48 @@ export function calculateCategoryPerformance(
   const surplus = isGoalReached ? Number((accumulated - monthlyGoal).toFixed(2)) : 0;
   const percentage = monthlyGoal > 0 ? (accumulated / monthlyGoal) * 100 : 0;
 
-  // Daily Required Average based on remaining work days
-  let dailyRequiredAverage: number | null = null;
+  // Dynamic Daily Goal: (Valor que ainda falta para fechar os objetivos ÷ Dias úteis a serem trabalhados)
+  let dynamicDailyGoal: number | null = null;
+  let calculationFormula = '';
   let statusMessage = '';
 
+  const remWorkDays = scheduleStats.remainingWorkDays;
+
   if (isGoalReached) {
+    dynamicDailyGoal = 0;
     statusMessage = surplus > 0 ? `Meta superada! (+${formatCategoryValue(surplus, category.metricType)})` : 'Meta atingida!';
-    dailyRequiredAverage = 0;
+    calculationFormula = `Objetivo mensal concluído (+${formatCategoryValue(surplus, category.metricType)} excedente)`;
   } else if (!scheduleStats.hasSchedule) {
-    statusMessage = 'Escala não configurada';
-    dailyRequiredAverage = null;
-  } else if (scheduleStats.remainingWorkDays <= 0) {
-    statusMessage = 'Sem dias restantes de trabalho';
-    dailyRequiredAverage = null;
+    // Fallback if no schedule configured yet
+    const fallbackDays = 22;
+    dynamicDailyGoal = Number((remaining / fallbackDays).toFixed(2));
+    statusMessage = `${formatCategoryValue(dynamicDailyGoal, category.metricType)}/dia (escala não configurada)`;
+    calculationFormula = `Falta ${formatCategoryValue(remaining, category.metricType)} ÷ 22 dias padrão`;
+  } else if (remWorkDays <= 0) {
+    dynamicDailyGoal = remaining;
+    statusMessage = 'Sem mais dias de trabalho agendados';
+    calculationFormula = `Falta ${formatCategoryValue(remaining, category.metricType)} (0 dias de trabalho restantes)`;
   } else {
-    // Avoid division by zero
-    dailyRequiredAverage = Number((remaining / scheduleStats.remainingWorkDays).toFixed(2));
-    statusMessage = `${formatCategoryValue(dailyRequiredAverage, category.metricType)}/dia restante`;
+    // Exact requested formula: Valor que falta ÷ Dias a serem trabalhados
+    dynamicDailyGoal = Number((remaining / remWorkDays).toFixed(2));
+    statusMessage = `${formatCategoryValue(dynamicDailyGoal, category.metricType)}/dia restante`;
+    calculationFormula = `Falta ${formatCategoryValue(remaining, category.metricType)} ÷ ${remWorkDays} ${remWorkDays === 1 ? 'dia a trabalhar' : 'dias a trabalhar'}`;
   }
 
   return {
     category,
     monthlyGoal,
-    dailyGoal,
+    dailyGoal: dynamicDailyGoal,
+    baseDailyGoal,
+    dynamicDailyGoal,
+    remainingWorkDays: remWorkDays,
+    calculationFormula,
     accumulated,
     remaining,
     percentage,
     isGoalReached,
     surplus,
-    dailyRequiredAverage,
+    dailyRequiredAverage: dynamicDailyGoal,
     statusMessage,
     lastUpdatedDate,
   };
