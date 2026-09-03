@@ -1,5 +1,6 @@
 import React from 'react';
-import { User, UserRole } from '../types';
+import { User, UserRole, BrandConfig } from '../types';
+import { BrandLogo } from './BrandLogo';
 import {
   TrendingUp,
   RefreshCw,
@@ -8,26 +9,35 @@ import {
   Calendar,
   LayoutDashboard,
   UserCog,
-  Shield,
-  UserCheck,
-  Store,
+  LogOut,
+  Edit,
+  Palette,
+  Sparkles,
+  ChevronDown,
 } from 'lucide-react';
+import { getAccentClasses } from '../utils/brand';
 
 interface NavbarProps {
   currentUser: User;
   allUsers: User[];
-  onSwitchUser: (userId: string) => void;
+  brand: BrandConfig;
+  onOpenBrandCustomizer?: () => void;
+  onSwitchUser?: (userId: string) => void;
   currentMonth: number;
   currentYear: number;
   onChangeMonth: (month: number, year: number) => void;
   activeTab: 'dashboard' | 'team' | 'goals' | 'schedule' | 'users';
   onSelectTab: (tab: 'dashboard' | 'team' | 'goals' | 'schedule' | 'users') => void;
   onOpenDailyEntry: () => void;
+  onOpenProfile?: () => void;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
   allUsers,
+  brand,
+  onOpenBrandCustomizer,
   onSwitchUser,
   currentMonth,
   currentYear,
@@ -35,6 +45,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onSelectTab,
   onOpenDailyEntry,
+  onOpenProfile,
+  onLogout,
 }) => {
   const months = [
     { num: 1, name: 'Janeiro' },
@@ -65,160 +77,189 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   const activeSellersCount = allUsers.filter(u => u.role === 'seller' && u.active !== false).length;
+  const accentClasses = getAccentClasses(brand.accent);
+  const isSuperAdmin = currentUser.role === 'super_admin';
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs">
+    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-2xl border-b border-black/[0.05] shadow-[0_2px_16px_rgba(0,0,0,0.02)] transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Top bar: Brand + User switch & Month */}
+        {/* Top bar: Brand + Controls & Profile */}
         <div className="flex items-center justify-between h-16 gap-4">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-black tracking-tight text-slate-900">
-                  Sales<span className="text-blue-600">Flow</span>
-                </span>
-                <span className="hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
-                  v2.0
-                </span>
-              </div>
-              <span className="text-[11px] text-slate-500 hidden md:block">
-                Gestão de Metas & Resultados
-              </span>
-            </div>
+          {/* Logo & Brand Name (Clickable to customize) */}
+          <div
+            onClick={onOpenBrandCustomizer}
+            className="flex items-center gap-2 group cursor-pointer py-1.5 px-2 -ml-2 rounded-2xl hover:bg-black/[0.03] transition duration-200"
+            title="Clique para personalizar o logótipo e a marca da ferramenta"
+          >
+            <BrandLogo brand={brand} size="md" showText={true} />
+            
+            {/* Subtle customize indicator pill on hover / for Super Admin */}
+            <span className="hidden xl:inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 group-hover:text-slate-800 bg-black/[0.03] group-hover:bg-white px-2 py-0.5 rounded-full border border-black/[0.04] transition ml-1">
+              <Palette className="w-3 h-3 text-slate-500 group-hover:text-slate-900" />
+              <span>Mudar Logo</span>
+            </span>
           </div>
 
           {/* Controls Right */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Month Picker */}
-            <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700">
-              <Calendar className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+            {/* Super Admin Brand Quick Button (mobile/tablet friendly) */}
+            {isSuperAdmin && onOpenBrandCustomizer && (
+              <button
+                type="button"
+                onClick={onOpenBrandCustomizer}
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-black/[0.06] bg-white/70 hover:bg-white text-slate-700 hover:text-slate-900 text-xs font-semibold shadow-2xs hover:shadow-xs transition cursor-pointer"
+                title="Personalizar Logótipo, Nome e Cores da Plataforma"
+              >
+                <Palette className="w-3.5 h-3.5 text-slate-600" />
+                <span>Marca & Logo</span>
+              </button>
+            )}
+
+            {/* Month Picker - Apple Minimalist Style */}
+            <div className="relative flex items-center rounded-2xl border border-black/[0.06] bg-black/[0.03] hover:bg-black/[0.05] px-3 py-1.5 text-xs font-semibold text-slate-800 transition">
+              <Calendar className="w-3.5 h-3.5 mr-2 text-slate-600 shrink-0" />
               <select
                 value={currentMonth}
                 onChange={e => onChangeMonth(Number(e.target.value), currentYear)}
-                className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer"
+                className="bg-transparent font-semibold text-slate-900 focus:outline-none cursor-pointer pr-4 appearance-none"
               >
                 {months.map(m => (
                   <option key={m.num} value={m.num}>
-                    {m.name} / {currentYear}
+                    {m.name} {currentYear}
                   </option>
                 ))}
               </select>
+              <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 pointer-events-none" />
             </div>
 
-            {/* Quick Result Update Action */}
+            {/* Quick Result Update Action (Apple Pill) */}
             <button
               id="btn-atualizar-resultado"
               onClick={onOpenDailyEntry}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 text-xs font-bold text-white shadow-sm hover:bg-blue-700 active:scale-95 transition"
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold text-white shadow-[0_2px_8px_rgba(0,113,227,0.25)] hover:opacity-95 active:scale-95 transition cursor-pointer ${accentClasses.primary}`}
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Atualizar Resultado</span>
               <span className="sm:hidden">Resultado</span>
             </button>
 
-            {/* Profile Switcher & User Management shortcut */}
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.name}
-                className="w-8 h-8 rounded-full object-cover border border-slate-200 hidden sm:block"
-              />
-              <div className="flex flex-col items-end">
-                <select
-                  value={currentUser.id}
-                  onChange={e => onSwitchUser(e.target.value)}
-                  className="text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg border border-slate-200 focus:outline-none cursor-pointer max-w-[140px] sm:max-w-[180px] truncate"
-                  title="Alterne o utilizador ativo para testar a visão de Vendedor, Gerente ou Administrador"
-                >
-                  <optgroup label={`Vendedores (${activeSellersCount})`}>
-                    {allUsers
-                      .filter(u => u.role === 'seller')
-                      .map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} (Vendedor)
-                        </option>
-                      ))}
-                  </optgroup>
-                  <optgroup label="Gestão">
-                    {allUsers
-                      .filter(u => u.role !== 'seller')
-                      .map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} ({getRoleLabel(u.role)})
-                        </option>
-                      ))}
-                  </optgroup>
-                </select>
+            {/* Logged in User Profile & Actions */}
+            <div className="flex items-center gap-2 pl-2 border-l border-black/[0.06]">
+              <div
+                onClick={onOpenProfile}
+                className="flex items-center gap-2.5 px-2 py-1 rounded-2xl hover:bg-black/[0.04] transition cursor-pointer group"
+                title="Clique para editar as suas informações pessoais"
+              >
+                <div className="relative">
+                  <img
+                    src={currentUser.avatar}
+                    alt={currentUser.name}
+                    className="w-8 h-8 rounded-full object-cover border border-black/[0.08] shadow-2xs group-hover:scale-105 transition duration-200"
+                  />
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
+                </div>
+                <div className="hidden md:flex flex-col text-left">
+                  <span className="text-xs font-bold text-slate-900 leading-tight truncate max-w-[130px]">
+                    {currentUser.name}
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-500 leading-tight">
+                    {getRoleLabel(currentUser.role)}
+                  </span>
+                </div>
               </div>
+
+              {/* Edit Profile Button */}
+              {onOpenProfile && (
+                <button
+                  type="button"
+                  onClick={onOpenProfile}
+                  className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-black/[0.06] bg-white hover:bg-slate-50 text-[11px] font-bold text-slate-700 transition shadow-2xs cursor-pointer"
+                  title="Editar as suas informações"
+                >
+                  <Edit className="w-3 h-3 text-slate-600" />
+                  <span>Perfil</span>
+                </button>
+              )}
+
+              {/* Logout Button */}
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-rose-200/60 bg-rose-50/50 hover:bg-rose-100/70 text-rose-700 text-xs font-bold transition shadow-2xs cursor-pointer"
+                  title="Terminar Sessão e voltar ao Ecrã de Login"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                  <span className="hidden sm:inline">Sair</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex items-center space-x-1 overflow-x-auto py-2 scrollbar-none border-t border-slate-100">
-          <button
-            onClick={() => onSelectTab('dashboard')}
-            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition shrink-0 ${
-              activeTab === 'dashboard'
-                ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            O Meu Desempenho
-          </button>
+        {/* Navigation Tabs - Apple macOS / iOS Segmented Control Bar */}
+        <div className="py-2.5 border-t border-black/[0.04]">
+          <div className="inline-flex items-center p-1 bg-black/[0.04] rounded-2xl gap-1 overflow-x-auto max-w-full scrollbar-none">
+            <button
+              onClick={() => onSelectTab('dashboard')}
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'dashboard'
+                  ? 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+              }`}
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>O Meu Desempenho</span>
+            </button>
 
-          <button
-            onClick={() => onSelectTab('team')}
-            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition shrink-0 ${
-              activeTab === 'team'
-                ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            Equipa da Loja ({activeSellersCount})
-          </button>
+            <button
+              onClick={() => onSelectTab('team')}
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'team'
+                  ? 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Equipa ({activeSellersCount})</span>
+            </button>
 
-          <button
-            onClick={() => onSelectTab('schedule')}
-            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition shrink-0 ${
-              activeTab === 'schedule'
-                ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Calendar className="w-4 h-4" />
-            Escala & Folgas
-          </button>
+            <button
+              onClick={() => onSelectTab('schedule')}
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'schedule'
+                  ? 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Escala & Folgas</span>
+            </button>
 
-          <button
-            onClick={() => onSelectTab('goals')}
-            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition shrink-0 ${
-              activeTab === 'goals'
-                ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Target className="w-4 h-4" />
-            Gestão de Metas
-          </button>
+            <button
+              onClick={() => onSelectTab('goals')}
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'goals'
+                  ? 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+              }`}
+            >
+              <Target className="w-3.5 h-3.5" />
+              <span>Gestão de Metas</span>
+            </button>
 
-          <button
-            onClick={() => onSelectTab('users')}
-            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition shrink-0 ${
-              activeTab === 'users'
-                ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <UserCog className="w-4 h-4" />
-            Utilizadores
-          </button>
+            <button
+              onClick={() => onSelectTab('users')}
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'users'
+                  ? 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+              }`}
+            >
+              <UserCog className="w-3.5 h-3.5" />
+              <span>Utilizadores</span>
+            </button>
+          </div>
         </div>
       </div>
     </header>

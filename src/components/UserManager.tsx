@@ -18,6 +18,7 @@ import {
   Image as ImageIcon,
   Sparkles,
   AlertCircle,
+  Lock,
 } from 'lucide-react';
 
 interface UserManagerProps {
@@ -28,7 +29,7 @@ interface UserManagerProps {
   onDeleteUser: (userId: string) => void;
 }
 
-const PRESET_AVATARS = [
+export const PRESET_AVATARS = [
   'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
@@ -60,9 +61,12 @@ export const UserManager: React.FC<UserManagerProps> = ({
   const cardFileInputRef = useRef<HTMLInputElement>(null);
   const [quickUploadUserId, setQuickUploadUserId] = useState<string | null>(null);
 
+  const isSuperAdmin = currentUser.role === 'super_admin';
+
   const [formData, setFormData] = useState<{
     name: string;
     email: string;
+    password?: string;
     role: UserRole;
     storeName: string;
     avatar: string;
@@ -70,6 +74,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
   }>({
     name: '',
     email: '',
+    password: '123',
     role: 'seller',
     storeName: 'Loja Centro - 01',
     avatar: PRESET_AVATARS[0],
@@ -175,8 +180,12 @@ export const UserManager: React.FC<UserManagerProps> = ({
     }
   };
 
-  // Handle quick direct upload from card
+  // Handle quick direct upload from card (for Super Admin on any user, or for current user)
   const handleCardQuickUpload = (userId: string) => {
+    if (!isSuperAdmin && userId !== currentUser.id) {
+      alert('Apenas pode alterar a sua própria fotografia de perfil.');
+      return;
+    }
     setQuickUploadUserId(userId);
     cardFileInputRef.current?.click();
   };
@@ -185,7 +194,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
     const file = e.target.files?.[0];
     if (file && quickUploadUserId) {
       const targetUser = users.find(u => u.id === quickUploadUserId);
-      if (targetUser) {
+      if (targetUser && (isSuperAdmin || targetUser.id === currentUser.id)) {
         processImageFile(file, (dataUrl) => {
           const updatedUser: User = {
             ...targetUser,
@@ -193,7 +202,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
             updatedAt: new Date().toISOString(),
           };
           onUpdateUser(updatedUser);
-          showToast(`Fotografia de "${targetUser.name}" atualizada!`);
+          showToast(`Fotografia de perfil de "${targetUser.name}" atualizada com sucesso!`);
         });
       }
     }
@@ -202,11 +211,16 @@ export const UserManager: React.FC<UserManagerProps> = ({
   };
 
   const handleStartEdit = (user: User) => {
+    if (!isSuperAdmin && user.id !== currentUser.id) {
+      alert('Apenas o Super Administrador ou o próprio utilizador pode editar estas informações.');
+      return;
+    }
     setEditingUser(user);
     setIsCreating(false);
     setFormData({
       name: user.name,
       email: user.email,
+      password: user.password || '',
       role: user.role,
       storeName: user.storeName || 'Loja Centro - 01',
       avatar: user.avatar,
@@ -215,11 +229,16 @@ export const UserManager: React.FC<UserManagerProps> = ({
   };
 
   const handleStartCreate = () => {
+    if (!isSuperAdmin) {
+      alert('Apenas o Super Administrador tem permissão para criar novos utilizadores.');
+      return;
+    }
     setIsCreating(true);
     setEditingUser(null);
     setFormData({
       name: '',
       email: '',
+      password: '123',
       role: 'seller',
       storeName: 'Loja Centro - 01',
       avatar: PRESET_AVATARS[Math.floor(Math.random() * PRESET_AVATARS.length)],
@@ -242,10 +261,16 @@ export const UserManager: React.FC<UserManagerProps> = ({
     }
 
     if (isCreating) {
+      if (!isSuperAdmin) {
+        alert('Apenas o Super Administrador tem permissão para registar novos utilizadores.');
+        return;
+      }
+
       const newUser: User = {
         id: `user-${Date.now()}`,
         name: formData.name.trim(),
         email: formData.email.trim() || `${formData.name.toLowerCase().replace(/\s+/g, '.')}@salesflow.pt`,
+        password: formData.password?.trim() || '123',
         role: formData.role,
         storeName: formData.storeName.trim() || 'Loja Centro - 01',
         avatar: formData.avatar,
@@ -254,26 +279,40 @@ export const UserManager: React.FC<UserManagerProps> = ({
         updatedAt: new Date().toISOString(),
       };
       onCreateUser(newUser);
-      showToast(`Utilizador "${newUser.name}" registado com sucesso!`);
+      showToast(`Utilizador "${newUser.name}" criado com sucesso!`);
     } else if (editingUser) {
+      if (!isSuperAdmin && editingUser.id !== currentUser.id) {
+        alert('Apenas o Super Administrador ou o próprio utilizador pode editar estas informações.');
+        return;
+      }
+
       const updated: User = {
         ...editingUser,
         name: formData.name.trim(),
         email: formData.email.trim(),
-        role: formData.role,
+        password: formData.password?.trim() || editingUser.password || '123',
+        role: isSuperAdmin ? formData.role : editingUser.role,
         storeName: formData.storeName.trim(),
         avatar: formData.avatar,
-        active: formData.active,
+        active: isSuperAdmin ? formData.active : editingUser.active,
         updatedAt: new Date().toISOString(),
       };
       onUpdateUser(updated);
-      showToast(`Dados de "${updated.name}" guardados com sucesso!`);
+      showToast(
+        editingUser.id === currentUser.id
+          ? 'As suas informações foram guardadas com sucesso!'
+          : `Informações de "${updated.name}" atualizadas com sucesso!`
+      );
     }
 
     handleCancelModal();
   };
 
   const handleDelete = (user: User) => {
+    if (!isSuperAdmin) {
+      alert('Apenas o Super Administrador tem permissão para remover utilizadores.');
+      return;
+    }
     if (user.id === currentUser.id) {
       alert('Não é possível remover o utilizador com sessão atualmente ativa.');
       return;
@@ -336,13 +375,20 @@ export const UserManager: React.FC<UserManagerProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={handleStartCreate}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-xs font-bold text-white shadow-sm hover:bg-blue-700 active:scale-95 transition self-start sm:self-auto"
-        >
-          <UserPlus className="w-4 h-4" />
-          Adicionar Utilizador
-        </button>
+        {isSuperAdmin ? (
+          <button
+            onClick={handleStartCreate}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-xs font-bold text-white shadow-sm hover:bg-blue-700 active:scale-95 transition self-start sm:self-auto cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            Adicionar Utilizador
+          </button>
+        ) : (
+          <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-xs font-medium self-start sm:self-auto">
+            <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span>Apenas o Super Admin cria utilizadores</span>
+          </div>
+        )}
       </div>
 
       {/* Search and Filters */}
@@ -427,15 +473,17 @@ export const UserManager: React.FC<UserManagerProps> = ({
                       {user.active !== false && (
                         <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" title="Utilizador Ativo" />
                       )}
-                      {/* Quick upload photo button on hover */}
-                      <button
-                        type="button"
-                        onClick={() => handleCardQuickUpload(user.id)}
-                        className="absolute inset-0 bg-slate-900/60 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
-                        title="Carregar nova fotografia para este utilizador"
-                      >
-                        <Camera className="w-4 h-4" />
-                      </button>
+                      {/* Quick upload photo button on hover (for Super Admin on any user, or for current user) */}
+                      {(isSuperAdmin || isCurrentUser) && (
+                        <button
+                          type="button"
+                          onClick={() => handleCardQuickUpload(user.id)}
+                          className="absolute inset-0 bg-slate-900/60 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity cursor-pointer"
+                          title={isCurrentUser ? 'Alterar a minha fotografia de perfil' : `Alterar fotografia de ${user.name}`}
+                        >
+                          <Camera className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
 
                     <div>
@@ -473,26 +521,42 @@ export const UserManager: React.FC<UserManagerProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => handleStartEdit(user)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-700 text-xs font-bold transition"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    Editar
-                  </button>
+                  {isCurrentUser ? (
+                    <button
+                      onClick={() => handleStartEdit(user)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold transition shadow-2xs cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      Editar o Meu Perfil
+                    </button>
+                  ) : isSuperAdmin ? (
+                    <button
+                      onClick={() => handleStartEdit(user)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-bold transition shadow-2xs cursor-pointer"
+                      title={`Editar dados de ${user.name}`}
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      Editar Utilizador
+                    </button>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 font-medium px-2 py-1 rounded bg-slate-50 border border-slate-100">
+                      <Lock className="w-3 h-3 text-slate-400" />
+                      Apenas o próprio
+                    </span>
+                  )}
 
-                  {!isCurrentUser && (
+                  {isSuperAdmin && !isCurrentUser && (
                     deleteConfirmId === user.id ? (
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleDelete(user)}
-                          className="px-2.5 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 transition"
+                          className="px-2.5 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 transition cursor-pointer"
                         >
                           Confirmar
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(null)}
-                          className="px-2 py-1.5 rounded-lg bg-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-300 transition"
+                          className="px-2 py-1.5 rounded-lg bg-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-300 transition cursor-pointer"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -500,8 +564,8 @@ export const UserManager: React.FC<UserManagerProps> = ({
                     ) : (
                       <button
                         onClick={() => setDeleteConfirmId(user.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                        title="Remover utilizador"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                        title="Remover utilizador (Super Admin)"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -522,15 +586,23 @@ export const UserManager: React.FC<UserManagerProps> = ({
             <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-6 py-4">
               <div>
                 <h3 className="text-base font-bold text-slate-900">
-                  {isCreating ? 'Adicionar Novo Utilizador' : `Editar: ${editingUser?.name}`}
+                  {isCreating
+                    ? 'Adicionar Novo Utilizador'
+                    : editingUser?.id === currentUser.id
+                    ? 'Editar as Minhas Informações'
+                    : `Editar Utilizador: ${editingUser?.name}`}
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Preencha os dados e carregue a fotografia de perfil do membro da equipa.
+                  {isCreating
+                    ? 'Registe um novo membro na equipa com cargo e dados de acesso.'
+                    : editingUser?.id === currentUser.id
+                    ? 'Pode atualizar o seu nome, palavra-passe, fotografia e loja.'
+                    : 'Atualize os dados cadastrais, cargo, palavra-passe ou fotografia deste membro da equipa.'}
                 </p>
               </div>
               <button
                 onClick={handleCancelModal}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -567,7 +639,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="absolute inset-0 bg-slate-900/60 rounded-2xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[10px] font-bold transition-opacity"
+                        className="absolute inset-0 bg-slate-900/60 rounded-2xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[10px] font-bold transition-opacity cursor-pointer"
                       >
                         <Camera className="w-4 h-4 mb-0.5" />
                         Alterar
@@ -587,7 +659,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white border border-slate-300 hover:border-blue-500 hover:text-blue-600 text-slate-700 text-xs font-bold shadow-2xs transition"
+                          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white border border-slate-300 hover:border-blue-500 hover:text-blue-600 text-slate-700 text-xs font-bold shadow-2xs transition cursor-pointer"
                         >
                           <Upload className="w-3.5 h-3.5 text-blue-600" />
                           Carregar Fotografia do Dispositivo
@@ -612,7 +684,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
                         key={idx}
                         type="button"
                         onClick={() => setFormData({ ...formData, avatar: url })}
-                        className={`w-9 h-9 rounded-xl overflow-hidden shrink-0 border-2 transition ${
+                        className={`w-9 h-9 rounded-xl overflow-hidden shrink-0 border-2 transition cursor-pointer ${
                           formData.avatar === url
                             ? 'border-blue-600 scale-105 shadow-xs'
                             : 'border-transparent opacity-70 hover:opacity-100 hover:scale-105'
@@ -641,36 +713,66 @@ export const UserManager: React.FC<UserManagerProps> = ({
                 />
               </div>
 
-              {/* Email */}
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                  Endereço de E-mail
-                </label>
-                <input
-                  type="email"
-                  placeholder="Ex: joao.pereira@salesflow.pt"
-                  value={formData.email}
-                  onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
-                />
+              {/* Email & Password Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                    Endereço de E-mail *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="Ex: utilizador@salesflow.pt"
+                    value={formData.email}
+                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center justify-between">
+                    <span>Palavra-passe</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Padrão: 123</span>
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Introduza a senha..."
+                      value={formData.password || ''}
+                      onChange={e => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full rounded-xl border border-slate-300 pl-9 pr-3 py-2 text-xs sm:text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Role & Store Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                    Cargo / Função *
+                    Cargo / Função
                   </label>
-                  <select
-                    value={formData.role}
-                    onChange={e => setFormData({ ...formData, role: e.target.value as UserRole })}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:outline-none bg-white"
-                  >
-                    <option value="seller">Vendedor</option>
-                    <option value="manager">Gerente / Gestor</option>
-                    <option value="admin">Administrador</option>
-                    <option value="super_admin">Super Admin</option>
-                  </select>
+                  {isSuperAdmin ? (
+                    <select
+                      value={formData.role}
+                      onChange={e => setFormData({ ...formData, role: e.target.value as UserRole })}
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:outline-none bg-white cursor-pointer"
+                    >
+                      <option value="seller">Vendedor</option>
+                      <option value="manager">Gerente / Gestor</option>
+                      <option value="admin">Administrador</option>
+                      <option value="super_admin">Super Admin</option>
+                    </select>
+                  ) : (
+                    <div className="p-2.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 flex items-center justify-between">
+                      <span>{getRoleBadge(formData.role).label}</span>
+                      <span className="text-[10px] font-normal text-slate-500 flex items-center gap-1">
+                        <Lock className="w-3 h-3 text-slate-400" />
+                        Definido pelo Super Admin
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -682,42 +784,44 @@ export const UserManager: React.FC<UserManagerProps> = ({
                     placeholder="Ex: Loja Centro - 01"
                     value={formData.storeName}
                     onChange={e => setFormData({ ...formData, storeName: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              {/* Active Status Toggle */}
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                <div>
-                  <span className="text-xs font-bold text-slate-800">Estado do Utilizador</span>
-                  <p className="text-[11px] text-slate-500">
-                    Os utilizadores ativos aparecem nas escalas e visões da equipa.
-                  </p>
+              {/* Active Status Toggle (Only Super Admin can change active state) */}
+              {isSuperAdmin && (
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <div>
+                    <span className="text-xs font-bold text-slate-800">Estado do Utilizador</span>
+                    <p className="text-[11px] text-slate-500">
+                      Os utilizadores ativos aparecem nas escalas e visões da equipa.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.active}
+                      onChange={e => setFormData({ ...formData, active: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.active}
-                    onChange={e => setFormData({ ...formData, active: e.target.checked })}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-              </div>
+              )}
 
               {/* Modal Actions */}
               <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleCancelModal}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-sm"
+                  className="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-sm cursor-pointer"
                 >
                   {isCreating ? 'Registar Utilizador' : 'Guardar Alterações'}
                 </button>

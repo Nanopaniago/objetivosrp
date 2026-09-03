@@ -184,12 +184,12 @@ export function calculateCategoryPerformance(
   );
   const monthlyGoal = goalObj && goalObj.targetValue !== undefined ? Number(goalObj.targetValue) : null;
 
-  // Base Daily Target (monthly goal / total work days of month or explicit setting)
+  // Base Daily Target (monthly goal / total work days of month)
   let baseDailyGoal: number | null = null;
-  if (goalObj && goalObj.dailyTargetValue !== undefined && goalObj.dailyTargetValue !== null && goalObj.dailyTargetValue > 0) {
-    baseDailyGoal = Number(goalObj.dailyTargetValue);
-  } else if (monthlyGoal && monthlyGoal > 0 && scheduleStats.totalMonthWorkDays > 0) {
+  if (monthlyGoal && monthlyGoal > 0 && scheduleStats.totalMonthWorkDays > 0) {
     baseDailyGoal = Number((monthlyGoal / scheduleStats.totalMonthWorkDays).toFixed(2));
+  } else if (goalObj && goalObj.dailyTargetValue !== undefined && goalObj.dailyTargetValue !== null && goalObj.dailyTargetValue > 0) {
+    baseDailyGoal = Number(goalObj.dailyTargetValue);
   } else if (monthlyGoal && monthlyGoal > 0) {
     baseDailyGoal = Number((monthlyGoal / 22).toFixed(2));
   }

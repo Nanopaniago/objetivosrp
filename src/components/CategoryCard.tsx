@@ -2,7 +2,7 @@ import React from 'react';
 import { CategoryCalculation } from '../types';
 import { CategoryIcon } from './CategoryIcon';
 import { formatCategoryValue } from '../utils/calculations';
-import { CheckCircle2, TrendingUp, Calendar, DollarSign, Package, Clock } from 'lucide-react';
+import { CheckCircle2, TrendingUp, Calendar, DollarSign, Package, Clock, Sparkles } from 'lucide-react';
 
 interface CategoryCardProps {
   calc: CategoryCalculation;
@@ -19,25 +19,24 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
     percentage,
     isGoalReached,
     surplus,
-    dailyRequiredAverage,
     statusMessage,
   } = calc;
 
-  // Visual color accents
+  // Visual subtle badge styling (Apple palette style)
   const getBadgeStyle = (slug: string) => {
     switch (slug) {
       case 'plus_master':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
+        return 'bg-blue-50/80 text-[#0071e3] border-blue-200/60';
       case 'plus':
-        return 'bg-amber-50 text-amber-800 border-amber-200';
+        return 'bg-amber-50/80 text-amber-700 border-amber-200/60';
       case 'megas_total':
-        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+        return 'bg-indigo-50/80 text-indigo-700 border-indigo-200/60';
       case 'dm_classicas':
-        return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+        return 'bg-emerald-50/80 text-emerald-700 border-emerald-200/60';
       case 'dimobilli':
-        return 'bg-orange-50 text-orange-800 border-orange-200';
+        return 'bg-orange-50/80 text-orange-700 border-orange-200/60';
       case 'peliculas':
-        return 'bg-cyan-50 text-cyan-800 border-cyan-200';
+        return 'bg-cyan-50/80 text-cyan-700 border-cyan-200/60';
       default:
         return 'bg-slate-50 text-slate-700 border-slate-200';
     }
@@ -46,7 +45,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
   const getProgressBarColor = () => {
     if (isGoalReached) return 'bg-emerald-500';
     if (!percentage) return 'bg-slate-300';
-    if (percentage >= 80) return 'bg-blue-600';
+    if (percentage >= 80) return 'bg-[#0071e3]';
     if (percentage >= 50) return 'bg-amber-500';
     return 'bg-rose-500';
   };
@@ -57,22 +56,26 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
   return (
     <div
       id={`card-category-${category.slug}`}
-      className={`relative rounded-2xl border bg-white p-5 shadow-2xs transition-all duration-200 hover:shadow-md flex flex-col justify-between ${
-        isGoalReached ? 'border-emerald-300 ring-1 ring-emerald-200/50' : 'border-slate-200'
+      className={`relative rounded-3xl border bg-white/95 backdrop-blur-md p-6 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_32px_-6px_rgba(0,0,0,0.07)] transition-all duration-300 flex flex-col justify-between ${
+        isGoalReached
+          ? 'border-emerald-300/80 ring-1 ring-emerald-200/50'
+          : 'border-black/[0.06] hover:border-black/[0.12]'
       }`}
     >
       <div>
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-xl border ${getBadgeStyle(category.slug)}`}>
+          <div className="flex items-center gap-3.5">
+            <div className={`p-3 rounded-2xl border ${getBadgeStyle(category.slug)} shadow-2xs`}>
               <CategoryIcon slug={category.slug} className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h3 className="font-bold text-slate-900 leading-tight">{category.name}</h3>
-                <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold border ${
-                  isCurrency ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-sky-50 text-sky-700 border-sky-200'
+                <h3 className="font-bold text-slate-900 leading-tight text-sm sm:text-base tracking-tight">
+                  {category.name}
+                </h3>
+                <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                  isCurrency ? 'bg-emerald-50 text-emerald-700 border-emerald-200/70' : 'bg-sky-50 text-sky-700 border-sky-200/70'
                 }`}>
                   {isCurrency ? (
                     <>
@@ -85,7 +88,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
                   )}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 line-clamp-1 mt-0.5" title={category.shortDescription}>
+              <p className="text-xs text-slate-500 line-clamp-1 mt-0.5 font-normal" title={category.shortDescription}>
                 {category.shortDescription}
               </p>
             </div>
@@ -93,16 +96,16 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
 
           {/* Status Badge */}
           {isGoalReached ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Meta Atingida
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              Meta Concluída
             </span>
           ) : monthlyGoal === null ? (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
               Sem Meta
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-[#0071e3]/10 text-[#0071e3] border border-[#0071e3]/20 shrink-0">
               <TrendingUp className="w-3.5 h-3.5" />
               {formattedPercentage}
             </span>
@@ -110,19 +113,23 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
         </div>
 
         {/* Goals Reference Grid: Meta Mensal & Meta Diária */}
-        <div className="mt-3.5 grid grid-cols-2 gap-2 bg-slate-50 rounded-xl p-2.5 border border-slate-100 text-xs">
+        <div className="mt-4 grid grid-cols-2 gap-2 bg-[#f5f5f7] rounded-2xl p-3 border border-black/[0.03] text-xs">
           <div className="text-left pl-1">
-            <span className="text-[10px] font-bold uppercase text-slate-400 block">Meta Mensal</span>
-            <span className="font-bold text-slate-800 text-xs sm:text-sm">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Meta Mensal
+            </span>
+            <span className="font-black text-slate-900 text-xs sm:text-sm tabular-nums">
               {monthlyGoal !== null ? formatCategoryValue(monthlyGoal, category.metricType) : 'N/D'}
             </span>
           </div>
 
-          <div className="text-right pr-1 border-l border-slate-200">
+          <div className="text-right pr-1 border-l border-black/[0.06]">
             <div className="flex items-center justify-end gap-1">
-              <span className="text-[10px] font-bold uppercase text-blue-600">Meta Diária</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#0071e3]">
+                Meta Diária
+              </span>
             </div>
-            <span className="font-black text-blue-900 text-xs sm:text-sm block">
+            <span className="font-black text-slate-900 text-xs sm:text-sm block tabular-nums">
               {isGoalReached
                 ? 'Concluída 🎯'
                 : dailyGoal !== null
@@ -130,7 +137,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
                 : '--'}
             </span>
             {!isGoalReached && calc.remainingWorkDays > 0 && remaining !== null && remaining > 0 && (
-              <span className="text-[9px] text-blue-600/80 font-medium block mt-0.5 truncate" title={calc.calculationFormula}>
+              <span className="text-[10px] text-slate-500 font-medium block mt-0.5 truncate" title={calc.calculationFormula}>
                 {calc.remainingWorkDays}d a trabalhar
               </span>
             )}
@@ -138,21 +145,21 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
         </div>
 
         {/* Main Metric Values: Realizado / Falta */}
-        <div className="mt-3 grid grid-cols-2 gap-2 border-y border-slate-100 py-2.5 text-center">
+        <div className="mt-3.5 grid grid-cols-2 gap-2 border-y border-black/[0.04] py-3 text-center">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
               Resultado Realizado
             </span>
-            <p className={`text-base font-black truncate mt-0.5 ${isGoalReached ? 'text-emerald-600' : 'text-slate-900'}`}>
+            <p className={`text-base sm:text-lg font-black truncate mt-0.5 tabular-nums ${isGoalReached ? 'text-emerald-600' : 'text-slate-900'}`}>
               {formatCategoryValue(accumulated, category.metricType)}
             </p>
           </div>
 
-          <div className="border-l border-slate-100">
+          <div className="border-l border-black/[0.04]">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
               {isGoalReached ? 'Excedente' : 'Saldo Restante'}
             </span>
-            <p className={`text-base font-black truncate mt-0.5 ${isGoalReached ? 'text-emerald-600' : 'text-amber-600'}`}>
+            <p className={`text-base sm:text-lg font-black truncate mt-0.5 tabular-nums ${isGoalReached ? 'text-emerald-600' : 'text-amber-600'}`}>
               {isGoalReached
                 ? `+${formatCategoryValue(surplus, category.metricType)}`
                 : formatCategoryValue(remaining ?? 0, category.metricType)}
@@ -160,13 +167,13 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mt-3">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-bold text-slate-600">Cumprimento da Meta</span>
-            <span className="font-black text-slate-900">{formattedPercentage}</span>
+        {/* Apple Health-style Progress Bar */}
+        <div className="mt-3.5">
+          <div className="flex items-center justify-between text-xs mb-1.5">
+            <span className="font-semibold text-slate-600">Progresso Geral</span>
+            <span className="font-black text-slate-900 tabular-nums">{formattedPercentage}</span>
           </div>
-          <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className="w-full h-2.5 bg-black/[0.05] rounded-full overflow-hidden p-[1px]">
             <div
               className={`h-full rounded-full transition-all duration-500 ${getProgressBarColor()}`}
               style={{ width: `${Math.min(percentage || 0, 100)}%` }}
@@ -176,13 +183,13 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
       </div>
 
       {/* Footer: Daily Pace Needed */}
-      <div className="mt-3.5 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs text-slate-600">
-        <span className="flex items-center gap-1 text-slate-500 font-medium shrink-0">
-          <Clock className="w-3.5 h-3.5 text-blue-600" />
-          Ritmo Diário:
+      <div className="mt-4 pt-3 border-t border-black/[0.04] flex items-center justify-between gap-2 text-xs text-slate-600">
+        <span className="flex items-center gap-1 text-slate-400 font-medium shrink-0 text-[11px]">
+          <Clock className="w-3.5 h-3.5 text-slate-500" />
+          Ritmo:
         </span>
-        <span className={`font-bold text-right text-[11px] truncate ${isGoalReached ? 'text-emerald-600' : 'text-slate-800'}`} title={calc.calculationFormula}>
-          {isGoalReached ? 'Meta Atingida! 🎯' : calc.calculationFormula || statusMessage}
+        <span className={`font-semibold text-right text-[11px] truncate ${isGoalReached ? 'text-emerald-600' : 'text-slate-700'}`} title={calc.calculationFormula}>
+          {isGoalReached ? 'Meta Mensal Superada! 🎯' : calc.calculationFormula || statusMessage}
         </span>
       </div>
     </div>

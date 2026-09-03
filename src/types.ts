@@ -24,7 +24,9 @@ export interface GoalCategory {
 export interface User {
   id: string;
   name: string;
+  username?: string;
   email: string;
+  password?: string;
   role: UserRole;
   avatar: string;
   active: boolean;
@@ -142,4 +144,18 @@ export interface SellerPerformanceSummary {
   categories: Record<CategorySlug, CategoryCalculation>;
   scheduleStats: ScheduleCalculation;
   overallProgressPercentage: number;
+}
+
+export type BrandAccent = 'graphite' | 'apple_blue' | 'indigo' | 'emerald' | 'amber';
+
+export type LogoPreset = 'leaf' | 'sparkle' | 'pulse' | 'wave' | 'gem' | 'target' | 'flow';
+
+export interface BrandConfig {
+  name: string; // e.g. "SalesFlow"
+  highlightWord?: string; // e.g. "Flow"
+  tagline: string; // e.g. "Gestão de Metas & Alta Performance"
+  logoType: 'preset' | 'custom_image';
+  logoPreset: LogoPreset;
+  customLogoUrl?: string; // uploaded image Data URL or image link
+  accent: BrandAccent;
 }

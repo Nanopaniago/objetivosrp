@@ -5,6 +5,7 @@ import {
   MonthlyGoal,
   DailyEntry,
   WorkSchedule,
+  BrandConfig,
 } from './types';
 import {
   DEFAULT_CATEGORIES,
@@ -20,22 +21,78 @@ import { GoalsManager } from './components/GoalsManager';
 import { ScheduleManager } from './components/ScheduleManager';
 import { UserManager } from './components/UserManager';
 import { ResultUpdateModal } from './components/ResultUpdateModal';
+import { LoginScreen } from './components/LoginScreen';
+import { ProfileModal } from './components/ProfileModal';
+import { BrandCustomizerModal } from './components/BrandCustomizerModal';
+import { loadBrandConfig, saveBrandConfig } from './utils/brand';
 
 export default function App() {
   const currentDate = new Date();
   const [currentMonth, setCurrentMonth] = useState<number>(currentDate.getMonth() + 1);
   const [currentYear, setCurrentYear] = useState<number>(currentDate.getFullYear());
 
+  // Brand Configuration State (Apple style customizable logo, name, colors)
+  const [brand, setBrand] = useState<BrandConfig>(() => loadBrandConfig());
+  const [isBrandCustomizerOpen, setIsBrandCustomizerOpen] = useState(false);
+
+  // Sync document title to brand name
+  useEffect(() => {
+    document.title = `${brand.name} - Gestão de Metas & Desempenho`;
+  }, [brand.name]);
+
+  const handleSaveBrand = (newBrand: BrandConfig) => {
+    setBrand(newBrand);
+    saveBrandConfig(newBrand);
+  };
+
   // Users State with LocalStorage
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem('salesflow_users_v3');
-    return saved ? JSON.parse(saved) : INITIAL_USERS;
+    const defaultSuperAdmin = INITIAL_USERS.find(u => u.role === 'super_admin')!;
+    if (saved) {
+      try {
+        const parsed: User[] = JSON.parse(saved);
+        const hasSuperAdmin = parsed.some(u => u.role === 'super_admin' || u.id === 'user-super-admin' || u.username === 'paniago26');
+        let list: User[] = parsed.map(u => {
+          if (u.role === 'super_admin' || u.id === 'user-super-admin') {
+            return {
+              ...u,
+              id: 'user-super-admin',
+              name: u.name && u.name !== 'Super Administrador' ? u.name : 'Super Admin (paniago26)',
+              username: 'paniago26',
+              email: u.email && !u.email.includes('superadmin') ? u.email : 'paniago26@salesflow.pt',
+              password: 'portodemos2026',
+              role: 'super_admin' as const,
+            };
+          }
+          return {
+            ...u,
+            password: u.password || '123',
+          };
+        });
+
+        if (!hasSuperAdmin) {
+          list = [defaultSuperAdmin, ...list];
+        }
+        return list;
+      } catch (e) {
+        console.error('Error loading users', e);
+      }
+    }
+    return INITIAL_USERS;
+  });
+
+  // Authentication State
+  const [authenticatedUserId, setAuthenticatedUserId] = useState<string | null>(() => {
+    return localStorage.getItem('salesflow_session_user_id') || null;
   });
 
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
     const saved = localStorage.getItem('salesflow_current_user_id_v3');
     return saved || (users[0] ? users[0].id : INITIAL_USERS[0].id);
   });
+
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const [categories] = useState<GoalCategory[]>(DEFAULT_CATEGORIES);
 
@@ -78,16 +135,28 @@ export default function App() {
     localStorage.setItem('salesflow_schedules_v3', JSON.stringify(schedules));
   }, [schedules]);
 
-  // Current active user
-  const currentUser = users.find(u => u.id === currentUserId) || users[0] || INITIAL_USERS[0];
+  // Handle Login & Logout
+  const handleLogin = (user: User) => {
+    setAuthenticatedUserId(user.id);
+    setCurrentUserId(user.id);
+    localStorage.setItem('salesflow_session_user_id', user.id);
+  };
 
-  // If active user is not a seller (e.g. Gerente), we pick the first seller for the dashboard view or selected seller
+  const handleLogout = () => {
+    setAuthenticatedUserId(null);
+    localStorage.removeItem('salesflow_session_user_id');
+  };
+
+  // Current active user
+  const effectiveUserId = authenticatedUserId || currentUserId;
+  const currentUser = users.find(u => u.id === effectiveUserId) || users[0] || INITIAL_USERS[0];
+
+  // If active user is not a seller (e.g. Gerente/Admin), we pick the first seller for the dashboard view
   const displaySeller = currentUser.role === 'seller' ? currentUser : users.find(u => u.role === 'seller') || users[0] || INITIAL_USERS[0];
 
   // When a new result update is saved, it replaces previous result updates for this seller in this month
   const handleSaveResultUpdate = (newUpdate: DailyEntry) => {
     setEntries(prev => {
-      // Filter out previous result updates for the same seller and month so the new update takes precedence
       const [uYear, uMonth] = newUpdate.date.split('-').map(Number);
       const otherEntries = prev.filter(e => {
         if (e.sellerId !== newUpdate.sellerId) return true;
@@ -122,7 +191,9 @@ export default function App() {
 
   const handleDeleteUser = (userId: string) => {
     setUsers(prev => prev.filter(u => u.id !== userId));
-    if (currentUserId === userId) {
+    if (authenticatedUserId === userId) {
+      handleLogout();
+    } else if (currentUserId === userId) {
       const remaining = users.filter(u => u.id !== userId);
       if (remaining.length > 0) {
         setCurrentUserId(remaining[0].id);
@@ -132,13 +203,39 @@ export default function App() {
 
   const sellersList = users.filter(u => u.role === 'seller' && u.active !== false);
 
+  // If user is not authenticated, show initial Login Screen
+  if (!authenticatedUserId) {
+    return (
+      <>
+        <LoginScreen
+          users={users}
+          brand={brand}
+          onLogin={handleLogin}
+          onOpenBrandCustomizer={() => setIsBrandCustomizerOpen(true)}
+        />
+        <BrandCustomizerModal
+          isOpen={isBrandCustomizerOpen}
+          onClose={() => setIsBrandCustomizerOpen(false)}
+          brand={brand}
+          onSaveBrand={handleSaveBrand}
+        />
+      </>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f] font-sans antialiased flex flex-col selection:bg-slate-900 selection:text-white">
       {/* Top Navbar */}
       <Navbar
         currentUser={currentUser}
         allUsers={users}
-        onSwitchUser={setCurrentUserId}
+        brand={brand}
+        onOpenBrandCustomizer={() => setIsBrandCustomizerOpen(true)}
+        onSwitchUser={(newId) => {
+          setCurrentUserId(newId);
+          setAuthenticatedUserId(newId);
+          localStorage.setItem('salesflow_session_user_id', newId);
+        }}
         currentMonth={currentMonth}
         currentYear={currentYear}
         onChangeMonth={(m, y) => {
@@ -148,10 +245,12 @@ export default function App() {
         activeTab={activeTab}
         onSelectTab={setActiveTab}
         onOpenDailyEntry={() => setIsResultUpdateModalOpen(true)}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-7">
         {activeTab === 'dashboard' && (
           <SellerDashboard
             seller={displaySeller}
@@ -185,6 +284,7 @@ export default function App() {
             currentYear={currentYear}
             schedules={schedules}
             currentUserRole={currentUser.role}
+            currentUser={currentUser}
             onUpdateSchedule={handleUpdateSchedule}
           />
         )}
@@ -227,10 +327,31 @@ export default function App() {
         onSaveResultUpdate={handleSaveResultUpdate}
       />
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-4 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400">
-          SalesFlow &copy; {currentYear} &bull; Plataforma de Gestão de Metas e Atualização de Resultados de Vendas
+      {/* Profile Edit Modal */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        currentUser={currentUser}
+        onUpdateUser={handleUpdateUser}
+      />
+
+      {/* Brand & Logo Customizer Modal */}
+      <BrandCustomizerModal
+        isOpen={isBrandCustomizerOpen}
+        onClose={() => setIsBrandCustomizerOpen(false)}
+        brand={brand}
+        onSaveBrand={handleSaveBrand}
+      />
+
+      {/* Apple-styled Minimalist Footer */}
+      <footer className="border-t border-black/[0.05] bg-white/70 backdrop-blur-md py-5 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div>
+            <span className="font-semibold text-slate-600">{brand.name}</span> &bull; Design Orgânico de Alta Performance
+          </div>
+          <div className="text-[11px] text-slate-400">
+            {brand.tagline || 'Gestão de Metas e Atualização de Resultados'} &bull; {currentYear}
+          </div>
         </div>
       </footer>
     </div>
