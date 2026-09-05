@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   AlertCircle,
   ArrowRight,
-  Palette,
 } from 'lucide-react';
 import { getAccentClasses } from '../utils/brand';
 
@@ -17,16 +16,14 @@ interface LoginScreenProps {
   users: User[];
   brand: BrandConfig;
   onLogin: (user: User) => void;
-  onOpenBrandCustomizer?: () => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
   users,
   brand,
   onLogin,
-  onOpenBrandCustomizer,
 }) => {
-  const [usernameOrEmail, setUsernameOrEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -38,11 +35,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     e.preventDefault();
     setErrorMsg(null);
 
-    const trimmedInput = usernameOrEmail.trim().toLowerCase();
+    const trimmedInput = username.trim().toLowerCase();
     const trimmedPass = password.trim();
 
     if (!trimmedInput) {
-      setErrorMsg('Por favor, introduza o seu utilizador ou e-mail.');
+      setErrorMsg('Por favor, introduza o seu nome de utilizador.');
       return;
     }
 
@@ -54,22 +51,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     setIsLoading(true);
 
     setTimeout(() => {
-      // Find user by username, email, or special super_admin match for paniago26
+      // Find user by username, name or email fallback, or special super_admin match
       const foundUser = users.find(u => {
         if (u.active === false) return false;
 
-        const emailMatch = u.email.toLowerCase() === trimmedInput;
-        const emailPrefixMatch = u.email.toLowerCase() === `${trimmedInput}@salesflow.pt`;
         const usernameMatch = u.username && u.username.toLowerCase() === trimmedInput;
+        const nameMatch = u.name.toLowerCase() === trimmedInput || u.name.toLowerCase().replace(/\s+/g, '.') === trimmedInput;
+        const emailMatch = u.email && u.email.toLowerCase() === trimmedInput;
+        const emailPrefixMatch = u.email && u.email.toLowerCase().split('@')[0] === trimmedInput;
         const isSuperAdminMatch =
           (u.role === 'super_admin' || u.id === 'user-super-admin') &&
           (trimmedInput === 'paniago26' || trimmedInput === 'paniago26@salesflow.pt');
 
-        return emailMatch || emailPrefixMatch || usernameMatch || isSuperAdminMatch;
+        return usernameMatch || nameMatch || emailPrefixMatch || emailMatch || isSuperAdminMatch;
       });
 
       if (!foundUser) {
-        setErrorMsg('Utilizador ou e-mail não encontrado. Verifique as suas credenciais.');
+        setErrorMsg('Nome de utilizador não encontrado. Verifique as suas credenciais.');
         setIsLoading(false);
         return;
       }
@@ -96,27 +94,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       {/* Subtle organic ambient gradients inspired by Apple */}
       <div className="absolute top-1/6 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-blue-100/40 via-purple-100/30 to-emerald-100/30 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Top right subtle Customize Brand Trigger */}
-      {onOpenBrandCustomizer && (
-        <button
-          type="button"
-          onClick={onOpenBrandCustomizer}
-          className="absolute top-5 right-5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 hover:bg-white text-slate-600 hover:text-slate-900 text-xs font-semibold border border-black/[0.06] shadow-2xs backdrop-blur-md transition cursor-pointer"
-          title="Personalizar logótipo e cores"
-        >
-          <Palette className="w-3.5 h-3.5 text-slate-500" />
-          <span>Mudar Logótipo & Marca</span>
-        </button>
-      )}
-
       <div className="relative w-full max-w-md">
         {/* Brand Header */}
         <div className="text-center mb-8 flex flex-col items-center">
-          <div
-            onClick={onOpenBrandCustomizer}
-            className="cursor-pointer group hover:scale-105 transition duration-300 mb-3"
-            title="Clique para personalizar o logótipo"
-          >
+          <div className="mb-3">
             <BrandLogo brand={brand} size="xl" showText={false} />
           </div>
 
@@ -151,10 +132,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Username / Email Field */}
+            {/* Username Field */}
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                Utilizador ou E-mail
+                Nome de Utilizador
               </label>
               <div className="relative">
                 <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -162,9 +143,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   type="text"
                   required
                   autoFocus
-                  value={usernameOrEmail}
-                  onChange={e => setUsernameOrEmail(e.target.value)}
-                  placeholder="ex: paniago26 ou o seu e-mail"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  placeholder="ex: paniago26, ana.silva, etc."
                   className="w-full rounded-2xl border border-black/[0.08] bg-black/[0.02] pl-10 pr-3.5 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 focus:border-[#0071e3] focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
                 />
               </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { CategoryCalculation } from '../types';
 import { CategoryIcon } from './CategoryIcon';
 import { formatCategoryValue } from '../utils/calculations';
@@ -54,9 +55,11 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
   const isCurrency = category.metricType === 'currency';
 
   return (
-    <div
+    <motion.div
       id={`card-category-${category.slug}`}
-      className={`relative rounded-3xl border bg-white/95 backdrop-blur-md p-6 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_32px_-6px_rgba(0,0,0,0.07)] transition-all duration-300 flex flex-col justify-between ${
+      whileHover={{ y: -3 }}
+      transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+      className={`relative rounded-3xl border bg-white/95 backdrop-blur-md p-6 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_32px_-6px_rgba(0,0,0,0.07)] transition-shadow duration-300 flex flex-col justify-between ${
         isGoalReached
           ? 'border-emerald-300/80 ring-1 ring-emerald-200/50'
           : 'border-black/[0.06] hover:border-black/[0.12]'
@@ -66,9 +69,13 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3.5">
-            <div className={`p-3 rounded-2xl border ${getBadgeStyle(category.slug)} shadow-2xs`}>
+            <motion.div
+              whileHover={{ scale: 1.12, rotate: 6 }}
+              whileTap={{ scale: 0.9 }}
+              className={`p-3 rounded-2xl border ${getBadgeStyle(category.slug)} shadow-2xs cursor-pointer`}
+            >
               <CategoryIcon slug={category.slug} className="w-5 h-5" />
-            </div>
+            </motion.div>
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h3 className="font-bold text-slate-900 leading-tight text-sm sm:text-base tracking-tight">
@@ -96,19 +103,25 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
 
           {/* Status Badge */}
           {isGoalReached ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
+            <motion.span
+              whileHover={{ scale: 1.06 }}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0"
+            >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
               Meta Concluída
-            </span>
+            </motion.span>
           ) : monthlyGoal === null ? (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
               Sem Meta
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-[#0071e3]/10 text-[#0071e3] border border-[#0071e3]/20 shrink-0">
+            <motion.span
+              whileHover={{ scale: 1.06 }}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-[#0071e3]/10 text-[#0071e3] border border-[#0071e3]/20 shrink-0"
+            >
               <TrendingUp className="w-3.5 h-3.5" />
               {formattedPercentage}
-            </span>
+            </motion.span>
           )}
         </div>
 
@@ -192,6 +205,6 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ calc }) => {
           {isGoalReached ? 'Meta Mensal Superada! 🎯' : calc.calculationFormula || statusMessage}
         </span>
       </div>
-    </div>
+    </motion.div>
   );
 };

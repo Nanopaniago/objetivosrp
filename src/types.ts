@@ -24,8 +24,8 @@ export interface GoalCategory {
 export interface User {
   id: string;
   name: string;
-  username?: string;
-  email: string;
+  username?: string; // Nome de utilizador para início de sessão
+  email?: string; // E-mail opcional de contacto
   password?: string;
   role: UserRole;
   avatar: string;

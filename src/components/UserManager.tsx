@@ -12,6 +12,7 @@ import {
   Store,
   Mail,
   UserCheck,
+  User as UserIcon,
   Search,
   Camera,
   Upload,
@@ -19,6 +20,7 @@ import {
   Sparkles,
   AlertCircle,
   Lock,
+  Palette,
 } from 'lucide-react';
 
 interface UserManagerProps {
@@ -27,6 +29,7 @@ interface UserManagerProps {
   onUpdateUser: (updatedUser: User) => void;
   onCreateUser: (newUser: User) => void;
   onDeleteUser: (userId: string) => void;
+  onOpenBrandCustomizer?: () => void;
 }
 
 export const PRESET_AVATARS = [
@@ -50,6 +53,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
   onUpdateUser,
   onCreateUser,
   onDeleteUser,
+  onOpenBrandCustomizer,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all');
@@ -65,6 +69,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
 
   const [formData, setFormData] = useState<{
     name: string;
+    username: string;
     email: string;
     password?: string;
     role: UserRole;
@@ -73,6 +78,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
     active: boolean;
   }>({
     name: '',
+    username: '',
     email: '',
     password: '123',
     role: 'seller',
@@ -219,7 +225,8 @@ export const UserManager: React.FC<UserManagerProps> = ({
     setIsCreating(false);
     setFormData({
       name: user.name,
-      email: user.email,
+      username: user.username || (user.email ? user.email.split('@')[0] : user.name.toLowerCase().replace(/\s+/g, '.')),
+      email: user.email || '',
       password: user.password || '',
       role: user.role,
       storeName: user.storeName || 'Loja Centro - 01',
@@ -237,6 +244,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
     setEditingUser(null);
     setFormData({
       name: '',
+      username: '',
       email: '',
       password: '123',
       role: 'seller',
@@ -260,6 +268,9 @@ export const UserManager: React.FC<UserManagerProps> = ({
       return;
     }
 
+    const fallbackUsername = formData.name.toLowerCase().trim().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.');
+    const cleanUsername = formData.username.trim().toLowerCase() || fallbackUsername;
+
     if (isCreating) {
       if (!isSuperAdmin) {
         alert('Apenas o Super Administrador tem permissão para registar novos utilizadores.');
@@ -269,7 +280,8 @@ export const UserManager: React.FC<UserManagerProps> = ({
       const newUser: User = {
         id: `user-${Date.now()}`,
         name: formData.name.trim(),
-        email: formData.email.trim() || `${formData.name.toLowerCase().replace(/\s+/g, '.')}@salesflow.pt`,
+        username: cleanUsername,
+        email: formData.email.trim() || undefined,
         password: formData.password?.trim() || '123',
         role: formData.role,
         storeName: formData.storeName.trim() || 'Loja Centro - 01',
@@ -279,7 +291,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
         updatedAt: new Date().toISOString(),
       };
       onCreateUser(newUser);
-      showToast(`Utilizador "${newUser.name}" criado com sucesso!`);
+      showToast(`Utilizador "${newUser.name}" (@${cleanUsername}) criado com sucesso!`);
     } else if (editingUser) {
       if (!isSuperAdmin && editingUser.id !== currentUser.id) {
         alert('Apenas o Super Administrador ou o próprio utilizador pode editar estas informações.');
@@ -289,7 +301,8 @@ export const UserManager: React.FC<UserManagerProps> = ({
       const updated: User = {
         ...editingUser,
         name: formData.name.trim(),
-        email: formData.email.trim(),
+        username: cleanUsername,
+        email: formData.email.trim() || undefined,
         password: formData.password?.trim() || editingUser.password || '123',
         role: isSuperAdmin ? formData.role : editingUser.role,
         storeName: formData.storeName.trim(),
@@ -323,10 +336,12 @@ export const UserManager: React.FC<UserManagerProps> = ({
   };
 
   const filteredUsers = users.filter(user => {
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.storeName && user.storeName.toLowerCase().includes(searchTerm.toLowerCase()));
+      user.name.toLowerCase().includes(term) ||
+      (user.username && user.username.toLowerCase().includes(term)) ||
+      (user.email && user.email.toLowerCase().includes(term)) ||
+      (user.storeName && user.storeName.toLowerCase().includes(term));
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -376,13 +391,26 @@ export const UserManager: React.FC<UserManagerProps> = ({
         </div>
 
         {isSuperAdmin ? (
-          <button
-            onClick={handleStartCreate}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-xs font-bold text-white shadow-sm hover:bg-blue-700 active:scale-95 transition self-start sm:self-auto cursor-pointer"
-          >
-            <UserPlus className="w-4 h-4" />
-            Adicionar Utilizador
-          </button>
+          <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+            {onOpenBrandCustomizer && (
+              <button
+                type="button"
+                onClick={onOpenBrandCustomizer}
+                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200/80 bg-white text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 active:scale-95 transition cursor-pointer"
+                title="Personalizar logótipo, nome da plataforma e identidade visual (Exclusivo Super Usuário)"
+              >
+                <Palette className="w-4 h-4 text-purple-600" />
+                <span>Identidade Visual & Logótipo</span>
+              </button>
+            )}
+            <button
+              onClick={handleStartCreate}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-xs font-bold text-white shadow-sm hover:bg-blue-700 active:scale-95 transition cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              Adicionar Utilizador
+            </button>
+          </div>
         ) : (
           <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-xs font-medium self-start sm:self-auto">
             <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -504,9 +532,17 @@ export const UserManager: React.FC<UserManagerProps> = ({
 
                 <div className="mt-4 space-y-1.5 border-t border-slate-100 pt-3 text-xs text-slate-600">
                   <div className="flex items-center gap-2">
-                    <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="truncate">{user.email}</span>
+                    <UserIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span className="font-semibold text-slate-800">
+                      @{user.username || (user.email ? user.email.split('@')[0] : user.name.toLowerCase().replace(/\s+/g, '.'))}
+                    </span>
                   </div>
+                  {user.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="truncate text-slate-500">{user.email}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Store className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span className="truncate">{user.storeName || 'Loja Centro - 01'}</span>
@@ -698,37 +734,53 @@ export const UserManager: React.FC<UserManagerProps> = ({
                 </div>
               </div>
 
-              {/* Full Name */}
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                  Nome Completo *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: João Pereira"
-                  value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-
-              {/* Email & Password Grid */}
+              {/* Full Name & Username */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                    Endereço de E-mail *
+                    Nome Completo *
                   </label>
                   <input
-                    type="email"
+                    type="text"
                     required
-                    placeholder="Ex: utilizador@salesflow.pt"
-                    value={formData.email}
-                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
+                    placeholder="Ex: João Pereira"
+                    value={formData.name}
+                    onChange={e => {
+                      const newName = e.target.value;
+                      // When creating, if username is empty or matches previous auto-slug, auto-fill it
+                      const oldSlug = formData.name.toLowerCase().trim().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.');
+                      if (isCreating && (!formData.username || formData.username === oldSlug)) {
+                        const newSlug = newName.toLowerCase().trim().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.');
+                        setFormData({ ...formData, name: newName, username: newSlug });
+                      } else {
+                        setFormData({ ...formData, name: newName });
+                      }
+                    }}
+                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center justify-between">
+                    <span>Nome de Utilizador *</span>
+                    <span className="text-[10px] text-blue-600 font-semibold">Para Login</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">@</span>
+                    <input
+                      type="text"
+                      required
+                      placeholder="joao.pereira"
+                      value={formData.username}
+                      onChange={e => setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/\s+/g, '') })}
+                      className="w-full rounded-xl border border-slate-300 pl-7 pr-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Password & Optional Email Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center justify-between">
                     <span>Palavra-passe</span>
@@ -742,6 +794,23 @@ export const UserManager: React.FC<UserManagerProps> = ({
                       value={formData.password || ''}
                       onChange={e => setFormData({ ...formData, password: e.target.value })}
                       className="w-full rounded-xl border border-slate-300 pl-9 pr-3 py-2 text-xs sm:text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center justify-between">
+                    <span>Endereço de E-mail</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Opcional</span>
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="email"
+                      placeholder="contacto@empresa.com (opcional)"
+                      value={formData.email}
+                      onChange={e => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full rounded-xl border border-slate-300 pl-9 pr-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
                     />
                   </div>
                 </div>

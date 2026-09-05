@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import {
   User,
   GoalCategory,
@@ -9,6 +10,7 @@ import {
 import { calculateSellerPerformanceSummary, formatCategoryValue } from '../utils/calculations';
 import { CategoryCard } from './CategoryCard';
 import { WorkingDaysCounter } from './WorkingDaysCounter';
+import { EvolutionChart } from './EvolutionChart';
 import {
   Calendar,
   Clock,
@@ -20,6 +22,7 @@ import {
   AlertCircle,
   Check,
   Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import { CategoryIcon } from './CategoryIcon';
 
@@ -100,39 +103,63 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             </div>
           </div>
 
-          {/* Quick Bento Stats Grid (Apple style clean tiles) */}
+          {/* Quick Bento Stats Grid (Apple style clean tiles with interactive animations) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="p-3.5 rounded-2xl bg-[#f5f5f7] border border-black/[0.03] text-center">
+            <motion.div
+              whileHover={{ scale: 1.04, y: -2 }}
+              whileTap={{ scale: 0.96 }}
+              className="p-3.5 rounded-2xl bg-[#f5f5f7] hover:bg-slate-100/80 border border-black/[0.03] text-center transition cursor-default"
+            >
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Dias de Trabalho</span>
               <div className="text-base font-black text-slate-900 flex items-center justify-center gap-1.5 mt-0.5 tabular-nums">
-                <Briefcase className="w-4 h-4 text-slate-600" />
+                <motion.span whileHover={{ rotate: 12 }}>
+                  <Briefcase className="w-4 h-4 text-slate-600" />
+                </motion.span>
                 {scheduleStats.hasSchedule ? scheduleStats.totalMonthWorkDays : '--'}
               </div>
-            </div>
+            </motion.div>
 
-            <div className="p-3.5 rounded-2xl bg-[#f5f5f7] border border-black/[0.03] text-center">
+            <motion.div
+              whileHover={{ scale: 1.04, y: -2 }}
+              whileTap={{ scale: 0.96 }}
+              className="p-3.5 rounded-2xl bg-blue-50/60 hover:bg-blue-50 border border-blue-100/60 text-center transition cursor-default"
+            >
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#0071e3] block">Dias Restantes</span>
               <div className="text-base font-black text-[#0071e3] flex items-center justify-center gap-1.5 mt-0.5 tabular-nums">
-                <Clock className="w-4 h-4 text-[#0071e3]" />
+                <motion.span whileHover={{ rotate: 180 }} transition={{ duration: 0.4 }}>
+                  <Clock className="w-4 h-4 text-[#0071e3]" />
+                </motion.span>
                 {scheduleStats.hasSchedule ? `${scheduleStats.remainingWorkDays} d` : '--'}
               </div>
-            </div>
+            </motion.div>
 
-            <div className="p-3.5 rounded-2xl bg-[#f5f5f7] border border-black/[0.03] text-center">
+            <motion.div
+              whileHover={{ scale: 1.04, y: -2 }}
+              whileTap={{ scale: 0.96 }}
+              className="p-3.5 rounded-2xl bg-amber-50/60 hover:bg-amber-50 border border-amber-100/60 text-center transition cursor-default"
+            >
               <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">Dias de Folga</span>
               <div className="text-base font-black text-amber-800 flex items-center justify-center gap-1.5 mt-0.5 tabular-nums">
-                <Coffee className="w-4 h-4 text-amber-600" />
+                <motion.span whileHover={{ rotate: [0, -10, 10, 0] }}>
+                  <Coffee className="w-4 h-4 text-amber-600" />
+                </motion.span>
                 {scheduleStats.hasSchedule ? `${scheduleStats.totalMonthOffDays} d` : '--'}
               </div>
-            </div>
+            </motion.div>
 
-            <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/60 text-center">
+            <motion.div
+              whileHover={{ scale: 1.04, y: -2 }}
+              whileTap={{ scale: 0.96 }}
+              className="p-3.5 rounded-2xl bg-emerald-50/80 hover:bg-emerald-50 border border-emerald-200/60 text-center transition cursor-default"
+            >
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">Metas Atingidas</span>
               <div className="text-base font-black text-emerald-700 flex items-center justify-center gap-1.5 mt-0.5 tabular-nums">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <motion.span whileHover={{ scale: 1.25 }}>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                </motion.span>
                 {reachedCount} de {categories.length}
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
 
@@ -168,6 +195,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         sellerName={seller.name}
       />
 
+      {/* Gráfico de Evolução com Aparência Moderna & Minimalista */}
+      <EvolutionChart
+        seller={seller}
+        currentMonth={currentMonth}
+        currentYear={currentYear}
+        categories={categories}
+        goals={goals}
+        entries={entries}
+        schedules={schedules}
+      />
+
       {/* 6 Category Cards Bento Grid */}
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
@@ -180,13 +218,15 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             </p>
           </div>
 
-          <button
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.95 }}
             onClick={onOpenDailyEntry}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#0071e3] text-xs font-bold text-white hover:bg-[#0077ed] active:scale-95 transition shadow-sm self-start sm:self-auto cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#0071e3] text-xs font-bold text-white hover:bg-[#0077ed] transition shadow-sm self-start sm:self-auto cursor-pointer group"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshCw className="w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500" />
             Atualizar Resultado
-          </button>
+          </motion.button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">

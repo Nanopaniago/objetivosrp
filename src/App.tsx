@@ -24,6 +24,7 @@ import { ResultUpdateModal } from './components/ResultUpdateModal';
 import { LoginScreen } from './components/LoginScreen';
 import { ProfileModal } from './components/ProfileModal';
 import { BrandCustomizerModal } from './components/BrandCustomizerModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { loadBrandConfig, saveBrandConfig } from './utils/brand';
 
 export default function App() {
@@ -39,11 +40,6 @@ export default function App() {
   useEffect(() => {
     document.title = `${brand.name} - Gestão de Metas & Desempenho`;
   }, [brand.name]);
-
-  const handleSaveBrand = (newBrand: BrandConfig) => {
-    setBrand(newBrand);
-    saveBrandConfig(newBrand);
-  };
 
   // Users State with LocalStorage
   const [users, setUsers] = useState<User[]>(() => {
@@ -67,6 +63,7 @@ export default function App() {
           }
           return {
             ...u,
+            username: u.username || (u.email ? u.email.split('@')[0].toLowerCase() : u.name.toLowerCase().replace(/\s+/g, '.')),
             password: u.password || '123',
           };
         });
@@ -153,6 +150,16 @@ export default function App() {
 
   // If active user is not a seller (e.g. Gerente/Admin), we pick the first seller for the dashboard view
   const displaySeller = currentUser.role === 'seller' ? currentUser : users.find(u => u.role === 'seller') || users[0] || INITIAL_USERS[0];
+  const isSuperAdmin = currentUser.role === 'super_admin';
+
+  const handleSaveBrand = (newBrand: BrandConfig) => {
+    if (!isSuperAdmin) {
+      alert('Apenas o Super Administrador tem permissão para alterar a marca e identidade visual.');
+      return;
+    }
+    setBrand(newBrand);
+    saveBrandConfig(newBrand);
+  };
 
   // When a new result update is saved, it replaces previous result updates for this seller in this month
   const handleSaveResultUpdate = (newUpdate: DailyEntry) => {
@@ -206,20 +213,11 @@ export default function App() {
   // If user is not authenticated, show initial Login Screen
   if (!authenticatedUserId) {
     return (
-      <>
-        <LoginScreen
-          users={users}
-          brand={brand}
-          onLogin={handleLogin}
-          onOpenBrandCustomizer={() => setIsBrandCustomizerOpen(true)}
-        />
-        <BrandCustomizerModal
-          isOpen={isBrandCustomizerOpen}
-          onClose={() => setIsBrandCustomizerOpen(false)}
-          brand={brand}
-          onSaveBrand={handleSaveBrand}
-        />
-      </>
+      <LoginScreen
+        users={users}
+        brand={brand}
+        onLogin={handleLogin}
+      />
     );
   }
 
@@ -230,7 +228,7 @@ export default function App() {
         currentUser={currentUser}
         allUsers={users}
         brand={brand}
-        onOpenBrandCustomizer={() => setIsBrandCustomizerOpen(true)}
+        onOpenBrandCustomizer={isSuperAdmin ? () => setIsBrandCustomizerOpen(true) : undefined}
         onSwitchUser={(newId) => {
           setCurrentUserId(newId);
           setAuthenticatedUserId(newId);
@@ -249,8 +247,8 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-7">
+      {/* Main Content Area - Optimized for mobile viewports and bottom dock */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 pt-3 sm:pt-7 pb-24 md:pb-8">
         {activeTab === 'dashboard' && (
           <SellerDashboard
             seller={displaySeller}
@@ -308,6 +306,7 @@ export default function App() {
             onUpdateUser={handleUpdateUser}
             onCreateUser={handleCreateUser}
             onDeleteUser={handleDeleteUser}
+            onOpenBrandCustomizer={isSuperAdmin ? () => setIsBrandCustomizerOpen(true) : undefined}
           />
         )}
       </main>
@@ -335,16 +334,28 @@ export default function App() {
         onUpdateUser={handleUpdateUser}
       />
 
-      {/* Brand & Logo Customizer Modal */}
-      <BrandCustomizerModal
-        isOpen={isBrandCustomizerOpen}
-        onClose={() => setIsBrandCustomizerOpen(false)}
+      {/* Brand & Logo Customizer Modal (Exclusivo Super Usuário) */}
+      {isSuperAdmin && (
+        <BrandCustomizerModal
+          isOpen={isBrandCustomizerOpen}
+          onClose={() => setIsBrandCustomizerOpen(false)}
+          brand={brand}
+          onSaveBrand={handleSaveBrand}
+          currentUser={currentUser}
+        />
+      )}
+
+      {/* Modern Native-like Mobile Bottom Navigation Bar */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        onOpenDailyEntry={() => setIsResultUpdateModalOpen(true)}
+        currentUser={currentUser}
         brand={brand}
-        onSaveBrand={handleSaveBrand}
       />
 
-      {/* Apple-styled Minimalist Footer */}
-      <footer className="border-t border-black/[0.05] bg-white/70 backdrop-blur-md py-5 mt-auto">
+      {/* Apple-styled Minimalist Footer (Desktop) */}
+      <footer className="hidden md:block border-t border-black/[0.05] bg-white/70 backdrop-blur-md py-5 mt-auto">
         <div className="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
             <span className="font-semibold text-slate-600">{brand.name}</span> &bull; Design Orgânico de Alta Performance

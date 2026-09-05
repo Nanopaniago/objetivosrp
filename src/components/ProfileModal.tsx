@@ -31,7 +31,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const initialPassword =
     currentUser.password || (currentUser.role === 'super_admin' ? 'portodemos2026' : '123');
   const [name, setName] = useState(currentUser.name);
-  const [email, setEmail] = useState(currentUser.email);
+  const [username, setUsername] = useState(
+    currentUser.username || (currentUser.email ? currentUser.email.split('@')[0] : currentUser.name.toLowerCase().replace(/\s+/g, '.'))
+  );
+  const [email, setEmail] = useState(currentUser.email || '');
   const [password, setPassword] = useState(initialPassword);
   const [storeName, setStoreName] = useState(currentUser.storeName || 'Loja Centro - 01');
   const [avatar, setAvatar] = useState(currentUser.avatar);
@@ -43,7 +46,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   useEffect(() => {
     setName(currentUser.name);
-    setEmail(currentUser.email);
+    setUsername(
+      currentUser.username || (currentUser.email ? currentUser.email.split('@')[0] : currentUser.name.toLowerCase().replace(/\s+/g, '.'))
+    );
+    setEmail(currentUser.email || '');
     setPassword(
       currentUser.password || (currentUser.role === 'super_admin' ? 'portodemos2026' : '123')
     );
@@ -110,10 +116,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       return;
     }
 
+    const fallbackUsername = name.toLowerCase().trim().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.');
+    const cleanUsername = username.trim().toLowerCase() || currentUser.username || fallbackUsername;
+
     const updatedUser: User = {
       ...currentUser,
       name: name.trim(),
-      email: email.trim(),
+      username: cleanUsername,
+      email: email.trim() || undefined,
       password: password.trim() || '123',
       storeName: storeName.trim(),
       avatar: avatar,
@@ -258,38 +268,41 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             </div>
           </div>
 
-          {/* Name */}
-          <div>
-            <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-              Nome Completo *
-            </label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Email & Password */}
+          {/* Full Name & Username */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                E-mail Profissional
+                Nome Completo *
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center justify-between">
+                <span>Nome de Utilizador *</span>
+                <span className="text-[10px] text-blue-600 font-semibold">Login</span>
               </label>
               <div className="relative">
-                <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">@</span>
                 <input
-                  type="email"
+                  type="text"
                   required
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 pl-9 pr-3 py-2 text-xs sm:text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
+                  value={username}
+                  onChange={e => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                  className="w-full rounded-xl border border-slate-300 pl-7 pr-3 py-2 text-xs sm:text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
                 />
               </div>
             </div>
+          </div>
 
+          {/* Password & Optional Email */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center justify-between">
                 <span>Palavra-passe</span>
@@ -307,10 +320,27 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center justify-between">
+                <span>Endereço de E-mail</span>
+                <span className="text-[10px] text-slate-400 font-normal">Opcional</span>
+              </label>
+              <div className="relative">
+                <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  placeholder="contacto@empresa.com (opcional)"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 pl-9 pr-3 py-2 text-xs sm:text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
+                />
               </div>
             </div>
           </div>

@@ -85,19 +85,29 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Top bar: Brand + Controls & Profile */}
         <div className="flex items-center justify-between h-16 gap-4">
-          {/* Logo & Brand Name (Clickable to customize) */}
+          {/* Logo & Brand Name (Only clickable to customize if Super Admin) */}
           <div
-            onClick={onOpenBrandCustomizer}
-            className="flex items-center gap-2 group cursor-pointer py-1.5 px-2 -ml-2 rounded-2xl hover:bg-black/[0.03] transition duration-200"
-            title="Clique para personalizar o logótipo e a marca da ferramenta"
+            onClick={isSuperAdmin ? onOpenBrandCustomizer : undefined}
+            className={`flex items-center gap-2 py-1.5 px-2 -ml-2 rounded-2xl transition duration-200 ${
+              isSuperAdmin && onOpenBrandCustomizer
+                ? 'group cursor-pointer hover:bg-black/[0.03]'
+                : 'cursor-default select-none'
+            }`}
+            title={
+              isSuperAdmin && onOpenBrandCustomizer
+                ? 'Clique para personalizar o logótipo e a identidade visual (Exclusivo Super Usuário)'
+                : undefined
+            }
           >
             <BrandLogo brand={brand} size="md" showText={true} />
             
-            {/* Subtle customize indicator pill on hover / for Super Admin */}
-            <span className="hidden xl:inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 group-hover:text-slate-800 bg-black/[0.03] group-hover:bg-white px-2 py-0.5 rounded-full border border-black/[0.04] transition ml-1">
-              <Palette className="w-3 h-3 text-slate-500 group-hover:text-slate-900" />
-              <span>Mudar Logo</span>
-            </span>
+            {/* Subtle customize indicator pill on hover - only for Super Admin */}
+            {isSuperAdmin && onOpenBrandCustomizer && (
+              <span className="hidden xl:inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 group-hover:text-slate-800 bg-black/[0.03] group-hover:bg-white px-2 py-0.5 rounded-full border border-black/[0.04] transition ml-1">
+                <Palette className="w-3 h-3 text-slate-500 group-hover:text-slate-900" />
+                <span>Mudar Logo</span>
+              </span>
+            )}
           </div>
 
           {/* Controls Right */}
@@ -108,7 +118,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 type="button"
                 onClick={onOpenBrandCustomizer}
                 className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-black/[0.06] bg-white/70 hover:bg-white text-slate-700 hover:text-slate-900 text-xs font-semibold shadow-2xs hover:shadow-xs transition cursor-pointer"
-                title="Personalizar Logótipo, Nome e Cores da Plataforma"
+                title="Personalizar Logótipo, Nome e Cores da Plataforma (Exclusivo Super Usuário)"
               >
                 <Palette className="w-3.5 h-3.5 text-slate-600" />
                 <span>Marca & Logo</span>
@@ -197,8 +207,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Navigation Tabs - Apple macOS / iOS Segmented Control Bar */}
-        <div className="py-2.5 border-t border-black/[0.04]">
+        {/* Navigation Tabs - Apple macOS / iOS Segmented Control Bar (hidden on mobile, handled by native MobileBottomNav) */}
+        <div className="hidden sm:block py-2.5 border-t border-black/[0.04]">
           <div className="inline-flex items-center p-1 bg-black/[0.04] rounded-2xl gap-1 overflow-x-auto max-w-full scrollbar-none">
             <button
               onClick={() => onSelectTab('dashboard')}

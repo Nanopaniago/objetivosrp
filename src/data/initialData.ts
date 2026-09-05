@@ -80,6 +80,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-1',
     name: 'Ana Silva',
+    username: 'ana.silva',
     email: 'ana.silva@salesflow.pt',
     password: '123',
     role: 'seller',
@@ -92,6 +93,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-2',
     name: 'Carlos Souza',
+    username: 'carlos.souza',
     email: 'carlos.souza@salesflow.pt',
     password: '123',
     role: 'seller',
@@ -104,6 +106,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-3',
     name: 'Juliana Lima',
+    username: 'juliana.lima',
     email: 'juliana.lima@salesflow.pt',
     password: '123',
     role: 'seller',
@@ -116,6 +119,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-4',
     name: 'Rafael Costa',
+    username: 'rafael.costa',
     email: 'rafael.costa@salesflow.pt',
     password: '123',
     role: 'seller',
@@ -128,6 +132,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-5',
     name: 'Beatriz Rocha',
+    username: 'beatriz.rocha',
     email: 'beatriz.rocha@salesflow.pt',
     password: '123',
     role: 'seller',
@@ -140,6 +145,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-6',
     name: 'Matheus Oliveira',
+    username: 'matheus.oliveira',
     email: 'matheus.oliveira@salesflow.pt',
     password: '123',
     role: 'seller',
@@ -152,6 +158,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-7',
     name: 'Mariana Santos',
+    username: 'mariana.santos',
     email: 'mariana.santos@salesflow.pt',
     password: '123',
     role: 'seller',
@@ -164,6 +171,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-8',
     name: 'Lucas Ferreira',
+    username: 'lucas.ferreira',
     email: 'lucas.ferreira@salesflow.pt',
     password: '123',
     role: 'seller',
@@ -176,6 +184,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-9',
     name: 'Marcos Gerente',
+    username: 'marcos.gerente',
     email: 'marcos.gerente@salesflow.pt',
     password: '123',
     role: 'manager',
@@ -188,6 +197,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-10',
     name: 'Roberto Administrador',
+    username: 'roberto.admin',
     email: 'roberto.admin@salesflow.pt',
     password: '123',
     role: 'admin',

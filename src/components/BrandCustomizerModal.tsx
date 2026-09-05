@@ -18,14 +18,18 @@ import {
   Layers,
   HelpCircle,
   Eye,
+  ShieldCheck,
+  Lock,
 } from 'lucide-react';
 import { DEFAULT_BRAND_CONFIG } from '../utils/brand';
+import { User } from '../types';
 
 interface BrandCustomizerModalProps {
   isOpen: boolean;
   onClose: () => void;
   brand: BrandConfig;
   onSaveBrand: (newBrand: BrandConfig) => void;
+  currentUser?: User;
 }
 
 const PRESET_OPTIONS: { id: LogoPreset; label: string; icon: React.ReactNode; desc: string }[] = [
@@ -51,6 +55,7 @@ export const BrandCustomizerModal: React.FC<BrandCustomizerModalProps> = ({
   onClose,
   brand,
   onSaveBrand,
+  currentUser,
 }) => {
   const [formData, setFormData] = useState<BrandConfig>(brand);
   const [activeLogoTab, setActiveLogoTab] = useState<'preset' | 'custom_image'>(brand.logoType);
@@ -59,6 +64,30 @@ export const BrandCustomizerModal: React.FC<BrandCustomizerModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
+
+  // Access guard: only Super Admin can alter brand & logo
+  if (currentUser && currentUser.role !== 'super_admin') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-black/[0.06] p-7 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3 border border-rose-100">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900 mb-1.5">Acesso Restrito ao Super Usuário</h3>
+          <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+            Apenas o Super Administrador da plataforma tem permissão para personalizar o logótipo, nome e identidade visual do sistema.
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+          >
+            Compreendido, fechar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleFileUpload = (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -88,6 +117,10 @@ export const BrandCustomizerModal: React.FC<BrandCustomizerModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (currentUser && currentUser.role !== 'super_admin') {
+      alert('Apenas o Super Administrador tem permissão para salvar alterações na marca.');
+      return;
+    }
     onSaveBrand(formData);
     onClose();
   };
@@ -102,10 +135,15 @@ export const BrandCustomizerModal: React.FC<BrandCustomizerModalProps> = ({
               <Palette className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-                Personalização da Marca & Logótipo
-              </h2>
-              <p className="text-xs text-slate-500">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                  Personalização da Marca & Logótipo
+                </h2>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                  <ShieldCheck className="w-3 h-3 text-amber-600" /> Exclusivo Super Usuário
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
                 Design orgânico com estética refinada inspirada na Apple
               </p>
             </div>
