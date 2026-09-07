@@ -1,5 +1,4 @@
 import { WorkSchedule } from '../types';
-import { generateInitialSchedules } from '../data/initialData';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase/client';
 import {
   workScheduleRowToSchedule,
@@ -12,22 +11,9 @@ import {
  *
  * Persists and queries seller work shifts and days off directly from the Supabase `work_schedules` table.
  * Does NOT rely on localStorage.
+ * Does NOT use mock data fallbacks.
  */
 export class SchedulesService {
-  private inMemoryCache: WorkSchedule[] = [];
-
-  constructor() {
-    const today = new Date();
-    this.inMemoryCache = generateInitialSchedules(today.getMonth() + 1, today.getFullYear());
-  }
-
-  getInitialSchedules(month: number, year: number): WorkSchedule[] {
-    const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
-    const cached = this.inMemoryCache.filter(s => s.date.startsWith(monthPrefix));
-    if (cached.length > 0) return cached;
-    return generateInitialSchedules(month, year);
-  }
-
   async getSchedules(month?: number, year?: number, sellerId?: string): Promise<WorkSchedule[]> {
     const client = getSupabaseClient();
     if (client && isSupabaseConfigured()) {
@@ -59,13 +45,7 @@ export class SchedulesService {
       return [];
     }
 
-    if (month && year) {
-      const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
-      const filtered = this.inMemoryCache.filter(s => s.date.startsWith(monthPrefix));
-      return filtered.length > 0 ? filtered : generateInitialSchedules(month, year);
-    }
-
-    return this.inMemoryCache;
+    return [];
   }
 
   async saveSchedules(schedules: WorkSchedule[]): Promise<WorkSchedule[]> {
@@ -84,9 +64,7 @@ export class SchedulesService {
         }
 
         if (data) {
-          const mapped = (data as WorkScheduleRow[]).map(r => workScheduleRowToSchedule(r));
-          this.inMemoryCache = mapped;
-          return mapped;
+          return (data as WorkScheduleRow[]).map(r => workScheduleRowToSchedule(r));
         }
       } catch (err) {
         console.error('Erro na persistência de escalas:', err);
@@ -94,8 +72,7 @@ export class SchedulesService {
       }
     }
 
-    this.inMemoryCache = schedules;
-    return schedules;
+    throw new Error('Supabase não está configurado para gravar escalas.');
   }
 
   async updateSchedule(schedule: WorkSchedule): Promise<WorkSchedule> {
@@ -115,12 +92,7 @@ export class SchedulesService {
         }
 
         if (data) {
-          const mapped = workScheduleRowToSchedule(data as WorkScheduleRow);
-          this.inMemoryCache = [
-            ...this.inMemoryCache.filter(s => !(s.sellerId === mapped.sellerId && s.date === mapped.date)),
-            mapped,
-          ];
-          return mapped;
+          return workScheduleRowToSchedule(data as WorkScheduleRow);
         }
       } catch (err) {
         console.error('Erro ao atualizar escala individual:', err);
@@ -128,11 +100,7 @@ export class SchedulesService {
       }
     }
 
-    this.inMemoryCache = [
-      ...this.inMemoryCache.filter(s => !(s.sellerId === schedule.sellerId && s.date === schedule.date)),
-      schedule,
-    ];
-    return schedule;
+    throw new Error('Supabase não está configurado para atualizar escala.');
   }
 }
 

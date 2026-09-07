@@ -7,9 +7,22 @@ import { goalsService } from '../services/goals.service';
  * Communicates strictly with goalsService.
  */
 export function useGoals(month: number, year: number) {
-  const [goals, setGoals] = useState<MonthlyGoal[]>(() => {
-    return goalsService.getInitialGoals(month, year);
-  });
+  const [goals, setGoals] = useState<MonthlyGoal[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    goalsService.getGoals(month, year).then(data => {
+      if (isMounted) {
+        setGoals(data);
+      }
+    }).catch(err => {
+      console.error('Erro ao carregar metas:', err);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [month, year]);
 
   const saveGoals = useCallback(async (updatedGoals: MonthlyGoal[]) => {
     setGoals(updatedGoals);

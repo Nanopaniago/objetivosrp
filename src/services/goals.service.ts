@@ -1,5 +1,4 @@
 import { MonthlyGoal } from '../types';
-import { generateInitialGoals } from '../data/initialData';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase/client';
 import {
   monthlyGoalRowToGoal,
@@ -12,21 +11,9 @@ import {
  *
  * Persists and queries monthly seller goals directly from Supabase `monthly_goals` table.
  * Does NOT use localStorage.
+ * Does NOT use mock data fallbacks.
  */
 export class GoalsService {
-  private inMemoryCache: MonthlyGoal[] = [];
-
-  constructor() {
-    const today = new Date();
-    this.inMemoryCache = generateInitialGoals(today.getMonth() + 1, today.getFullYear());
-  }
-
-  getInitialGoals(month: number, year: number): MonthlyGoal[] {
-    const cached = this.inMemoryCache.filter(g => g.month === month && g.year === year);
-    if (cached.length > 0) return cached;
-    return generateInitialGoals(month, year);
-  }
-
   async getGoals(month?: number, year?: number): Promise<MonthlyGoal[]> {
     const client = getSupabaseClient();
     if (client && isSupabaseConfigured()) {
@@ -47,20 +34,14 @@ export class GoalsService {
       }
 
       if (data && data.length > 0) {
-        const mapped = (data as MonthlyGoalRow[]).map(r => monthlyGoalRowToGoal(r));
-        return mapped;
+        return (data as MonthlyGoalRow[]).map(r => monthlyGoalRowToGoal(r));
       }
 
       // No goals exist yet in Supabase for this period
       return [];
     }
 
-    if (month && year) {
-      const filtered = this.inMemoryCache.filter(g => g.month === month && g.year === year);
-      return filtered.length > 0 ? filtered : generateInitialGoals(month, year);
-    }
-
-    return this.inMemoryCache;
+    return [];
   }
 
   async saveGoals(goals: MonthlyGoal[]): Promise<MonthlyGoal[]> {
@@ -79,9 +60,7 @@ export class GoalsService {
         }
 
         if (data) {
-          const mapped = (data as MonthlyGoalRow[]).map(r => monthlyGoalRowToGoal(r));
-          this.inMemoryCache = mapped;
-          return mapped;
+          return (data as MonthlyGoalRow[]).map(r => monthlyGoalRowToGoal(r));
         }
       } catch (err) {
         console.error('Erro na persistência de metas:', err);
@@ -89,8 +68,7 @@ export class GoalsService {
       }
     }
 
-    this.inMemoryCache = goals;
-    return goals;
+    throw new Error('Supabase não está configurado para gravar metas.');
   }
 
   async updateGoal(goal: MonthlyGoal): Promise<MonthlyGoal> {
@@ -110,9 +88,7 @@ export class GoalsService {
         }
 
         if (data) {
-          const mapped = monthlyGoalRowToGoal(data as MonthlyGoalRow);
-          this.inMemoryCache = this.inMemoryCache.map(g => (g.id === mapped.id ? mapped : g));
-          return mapped;
+          return monthlyGoalRowToGoal(data as MonthlyGoalRow);
         }
       } catch (err) {
         console.error('Erro na atualização de meta:', err);
@@ -120,8 +96,7 @@ export class GoalsService {
       }
     }
 
-    this.inMemoryCache = this.inMemoryCache.map(g => (g.id === goal.id ? goal : g));
-    return goal;
+    throw new Error('Supabase não está configurado para atualizar meta.');
   }
 }
 

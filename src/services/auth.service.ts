@@ -1,7 +1,6 @@
 import { User } from '../types';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase/client';
 import { profileToUser, ProfileRow } from '../lib/supabase/types';
-import { INITIAL_USERS } from '../data/initialData';
 
 const DEMO_SESSION_KEY = 'salesflow_demo_session_user_id';
 const ACTIVE_USER_KEY = 'salesflow_active_user_id';
@@ -155,25 +154,15 @@ export class AuthService {
       }
     }
 
-    // Local / unconfigured demo mode only (when Supabase credentials are not in .env):
-    try {
-      const demoId = sessionStorage.getItem(DEMO_SESSION_KEY);
-      if (demoId) {
-        return INITIAL_USERS.find(u => u.id === demoId) || INITIAL_USERS[0];
-      }
-    } catch {
-      // Ignored
-    }
     return null;
   }
 
   /**
-   * Logs in a user using Supabase Auth or unconfigured demo fallback.
+   * Logs in a user using Supabase Auth.
    */
   async login(
     identifier: string,
-    password?: string,
-    localPool: User[] = []
+    password?: string
   ): Promise<{ user: User | null; error?: string }> {
     const cleanId = identifier.trim();
     if (!cleanId) {
@@ -184,111 +173,90 @@ export class AuthService {
     }
 
     const client = getSupabaseClient();
-    if (client && isSupabaseConfigured()) {
-      try {
-        let loginEmail = cleanId;
-
-        // If username was provided instead of email, lookup associated email in profiles
-        if (!cleanId.includes('@')) {
-          const { data: profileLookup, error: lookupError } = await client
-            .from('profiles')
-            .select('*')
-            .ilike('username', cleanId)
-            .maybeSingle();
-
-          if (lookupError) {
-            console.warn('Aviso na pesquisa de username no Supabase:', lookupError.message);
-          }
-
-          const profileByUsername = profileLookup as ProfileRow | null;
-          if (!profileByUsername) {
-            return { user: null, error: 'Utilizador não encontrado no sistema.' };
-          }
-
-          if (profileByUsername.active === false) {
-            return { user: null, error: 'Esta conta está inativa. Contacte o administrador.' };
-          }
-
-          if (profileByUsername.email) {
-            loginEmail = profileByUsername.email;
-          } else {
-            return { user: null, error: 'Este perfil não tem um endereço de e-mail associado para autenticação.' };
-          }
-        }
-
-        // Authenticate via Supabase Auth
-        const { data, error } = await client.auth.signInWithPassword({
-          email: loginEmail,
-          password: password,
-        });
-
-        if (error) {
-          return { user: null, error: translateAuthError(error.message) };
-        }
-
-        if (!data.user) {
-          return { user: null, error: 'Erro ao autenticar. Nenhuma sessão devolvida pelo Supabase.' };
-        }
-
-        // Fetch user profile from Supabase
-        const { data: profile, error: profileErr } = await client
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .maybeSingle();
-
-        if (profileErr) {
-          console.error('Erro ao carregar perfil do utilizador:', profileErr);
-        }
-
-        if (profile) {
-          return { user: profileToUser(profile as ProfileRow) };
-        }
-
-        const authenticatedUser: User = {
-          id: data.user.id,
-          name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Utilizador',
-          username: data.user.user_metadata?.username || cleanId.toLowerCase(),
-          email: data.user.email || undefined,
-          role: (data.user.user_metadata?.role as any) || 'seller',
-          avatar: data.user.user_metadata?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          active: true,
-          storeName: 'Loja Principal',
-          createdAt: data.user.created_at,
-          updatedAt: data.user.updated_at || data.user.created_at,
-        };
-
-        return { user: authenticatedUser };
-      } catch (err: any) {
-        return { user: null, error: `Falha na conexão com Supabase Auth: ${err.message || err}` };
-      }
-    }
-
-    // Unconfigured demo mode only (when Supabase credentials are not configured in .env):
-    const lowerInput = cleanId.toLowerCase();
-    const pool = localPool.length > 0 ? localPool : INITIAL_USERS;
-    const foundUser = pool.find(u => {
-      const uUsername = (u.username || '').toLowerCase();
-      const uEmail = (u.email || '').toLowerCase();
-      const uName = u.name.toLowerCase().replace(/\s+/g, '.');
-      return uUsername === lowerInput || uEmail === lowerInput || uName === lowerInput;
-    });
-
-    if (!foundUser) {
-      return { user: null, error: 'Utilizador de demonstração não encontrado.' };
-    }
-
-    if (!foundUser.active) {
-      return { user: null, error: 'Esta conta está inativa.' };
+    if (!client || !isSupabaseConfigured()) {
+      return {
+        user: null,
+        error: 'O Supabase não está configurado. Configure as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY.',
+      };
     }
 
     try {
-      sessionStorage.setItem(DEMO_SESSION_KEY, foundUser.id);
-    } catch {
-      // Ignored
-    }
+      let loginEmail = cleanId;
 
-    return { user: foundUser };
+      // If username was provided instead of email, lookup associated email in profiles
+      if (!cleanId.includes('@')) {
+        const { data: profileLookup, error: lookupError } = await client
+          .from('profiles')
+          .select('*')
+          .ilike('username', cleanId)
+          .maybeSingle();
+
+        if (lookupError) {
+          console.warn('Aviso na pesquisa de username no Supabase:', lookupError.message);
+        }
+
+        const profileByUsername = profileLookup as ProfileRow | null;
+        if (!profileByUsername) {
+          return { user: null, error: 'Utilizador não encontrado no sistema.' };
+        }
+
+        if (profileByUsername.active === false) {
+          return { user: null, error: 'Esta conta está inativa. Contacte o administrador.' };
+        }
+
+        if (profileByUsername.email) {
+          loginEmail = profileByUsername.email;
+        } else {
+          return { user: null, error: 'Este perfil não tem um endereço de e-mail associado para autenticação.' };
+        }
+      }
+
+      // Authenticate via Supabase Auth
+      const { data, error } = await client.auth.signInWithPassword({
+        email: loginEmail,
+        password: password,
+      });
+
+      if (error) {
+        return { user: null, error: translateAuthError(error.message) };
+      }
+
+      if (!data.user) {
+        return { user: null, error: 'Erro ao autenticar. Nenhuma sessão devolvida pelo Supabase.' };
+      }
+
+      // Fetch user profile from Supabase
+      const { data: profile, error: profileErr } = await client
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      if (profileErr) {
+        console.error('Erro ao carregar perfil do utilizador:', profileErr);
+      }
+
+      if (profile) {
+        return { user: profileToUser(profile as ProfileRow) };
+      }
+
+      const authenticatedUser: User = {
+        id: data.user.id,
+        name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Utilizador',
+        username: data.user.user_metadata?.username || cleanId.toLowerCase(),
+        email: data.user.email || undefined,
+        role: (data.user.user_metadata?.role as any) || 'seller',
+        avatar: data.user.user_metadata?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        active: true,
+        storeName: 'Loja Principal',
+        createdAt: data.user.created_at,
+        updatedAt: data.user.updated_at || data.user.created_at,
+      };
+
+      return { user: authenticatedUser };
+    } catch (err: any) {
+      return { user: null, error: `Falha na conexão com Supabase Auth: ${err.message || err}` };
+    }
   }
 
   /**

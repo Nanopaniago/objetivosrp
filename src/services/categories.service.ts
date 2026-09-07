@@ -1,5 +1,4 @@
 import { GoalCategory, CategorySlug } from '../types';
-import { DEFAULT_CATEGORIES } from '../data/initialData';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase/client';
 import { categoryRowToGoalCategory, GoalCategoryRow } from '../lib/supabase/types';
 
@@ -7,15 +6,9 @@ import { categoryRowToGoalCategory, GoalCategoryRow } from '../lib/supabase/type
  * Categories Service
  *
  * Persists and retrieves goal categories from the Supabase `goal_categories` table.
- * Does NOT depend on localStorage.
+ * Does NOT depend on localStorage or mock fallback seeds.
  */
 export class CategoriesService {
-  private inMemoryCache: GoalCategory[] = [...DEFAULT_CATEGORIES];
-
-  getInitialCategories(): GoalCategory[] {
-    return this.inMemoryCache;
-  }
-
   async getCategories(): Promise<GoalCategory[]> {
     const client = getSupabaseClient();
     if (client && isSupabaseConfigured()) {
@@ -30,39 +23,14 @@ export class CategoriesService {
       }
 
       if (data && data.length > 0) {
-        const mapped = (data as GoalCategoryRow[]).map(r => categoryRowToGoalCategory(r));
-        this.inMemoryCache = mapped;
-        return mapped;
+        return (data as GoalCategoryRow[]).map(r => categoryRowToGoalCategory(r));
       }
 
-      // Auto-seed default categories if table is empty in Supabase
-      console.info('Tabela goal_categories vazia no Supabase. A inicializar seed...');
-      const seedRows = DEFAULT_CATEGORIES.map((cat, idx) => ({
-        id: `cat-${cat.slug}`,
-        slug: cat.slug,
-        name: cat.name,
-        short_description: cat.shortDescription,
-        detailed_description: cat.detailedDescription,
-        unit: cat.unit,
-        metric_type: cat.metricType,
-        icon_name: cat.iconName,
-        badge_color: cat.badgeColor,
-        sort_order: idx + 1,
-      }));
-
-      const { data: inserted, error: insertErr } = await client
-        .from('goal_categories')
-        .insert(seedRows as any)
-        .select();
-
-      if (!insertErr && inserted) {
-        const mapped = (inserted as GoalCategoryRow[]).map(r => categoryRowToGoalCategory(r));
-        this.inMemoryCache = mapped;
-        return mapped;
-      }
+      // If table is empty, return empty array without generating mock data
+      return [];
     }
 
-    return this.inMemoryCache;
+    return [];
   }
 
   async getCategoryBySlug(slug: CategorySlug): Promise<GoalCategory | undefined> {

@@ -1,5 +1,4 @@
 import { DailyEntry } from '../types';
-import { generateInitialEntries } from '../data/initialData';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase/client';
 import {
   dailyResultRowToEntry,
@@ -12,24 +11,9 @@ import {
  *
  * Persists and queries daily and accumulated results from the Supabase `daily_results` table.
  * Does NOT rely on localStorage.
+ * Does NOT use mock data fallbacks.
  */
 export class ResultsService {
-  private inMemoryCache: DailyEntry[] = [];
-
-  constructor() {
-    const today = new Date();
-    this.inMemoryCache = generateInitialEntries(today.getMonth() + 1, today.getFullYear());
-  }
-
-  getInitialDailyResults(month: number, year: number): DailyEntry[] {
-    const cached = this.inMemoryCache.filter(e => {
-      const [y, m] = e.date.split('-').map(Number);
-      return y === year && m === month;
-    });
-    if (cached.length > 0) return cached;
-    return generateInitialEntries(month, year);
-  }
-
   async getDailyResults(month?: number, year?: number, sellerId?: string): Promise<DailyEntry[]> {
     const client = getSupabaseClient();
     if (client && isSupabaseConfigured()) {
@@ -63,15 +47,7 @@ export class ResultsService {
       return [];
     }
 
-    if (month && year) {
-      const filtered = this.inMemoryCache.filter(e => {
-        const [y, m] = e.date.split('-').map(Number);
-        return y === year && m === month;
-      });
-      return filtered.length > 0 ? filtered : generateInitialEntries(month, year);
-    }
-
-    return this.inMemoryCache;
+    return [];
   }
 
   async saveDailyResult(newUpdate: DailyEntry, currentEntries: DailyEntry[] = []): Promise<DailyEntry[]> {
@@ -92,13 +68,10 @@ export class ResultsService {
 
         if (data) {
           const savedEntry = dailyResultRowToEntry(data as DailyResultRow);
-          const pool = currentEntries.length > 0 ? currentEntries : this.inMemoryCache;
-          const updatedList = [
-            ...pool.filter(e => !(e.sellerId === savedEntry.sellerId && e.date === savedEntry.date)),
+          return [
+            ...currentEntries.filter(e => !(e.sellerId === savedEntry.sellerId && e.date === savedEntry.date)),
             savedEntry,
           ];
-          this.inMemoryCache = updatedList;
-          return updatedList;
         }
       } catch (err) {
         console.error('Erro na gravação de resultado no Supabase:', err);
@@ -106,14 +79,7 @@ export class ResultsService {
       }
     }
 
-    // Local fallback
-    const pool = currentEntries.length > 0 ? currentEntries : this.inMemoryCache;
-    const updatedList = [
-      ...pool.filter(e => !(e.sellerId === newUpdate.sellerId && e.date === newUpdate.date)),
-      newUpdate,
-    ];
-    this.inMemoryCache = updatedList;
-    return updatedList;
+    throw new Error('Supabase não está configurado para guardar resultado.');
   }
 
   async saveDailyResults(entries: DailyEntry[]): Promise<DailyEntry[]> {
@@ -128,21 +94,19 @@ export class ResultsService {
 
         if (error) {
           console.error('Erro ao gravar lote de resultados no Supabase:', error.message);
-          throw error;
+          throw new Error(`Falha ao gravar lote de resultados: ${error.message}`);
         }
 
         if (data) {
-          const mapped = (data as DailyResultRow[]).map(r => dailyResultRowToEntry(r));
-          this.inMemoryCache = mapped;
-          return mapped;
+          return (data as DailyResultRow[]).map(r => dailyResultRowToEntry(r));
         }
       } catch (err) {
         console.error('Falha ao persistir lote de resultados:', err);
+        throw err;
       }
     }
 
-    this.inMemoryCache = entries;
-    return entries;
+    throw new Error('Supabase não está configurado para gravar lote de resultados.');
   }
 
   async deleteDailyResult(id: string): Promise<boolean> {
@@ -156,16 +120,17 @@ export class ResultsService {
 
         if (error) {
           console.error(`Erro ao eliminar resultado ${id} no Supabase:`, error.message);
-          throw error;
+          throw new Error(`Falha ao eliminar resultado: ${error.message}`);
         }
+
+        return true;
       } catch (err) {
         console.error('Erro ao eliminar resultado:', err);
         throw err;
       }
     }
 
-    this.inMemoryCache = this.inMemoryCache.filter(e => e.id !== id);
-    return true;
+    throw new Error('Supabase não está configurado para eliminar resultado.');
   }
 }
 

@@ -1,5 +1,4 @@
 import { BrandConfig, BrandAccent } from '../types';
-import { settingsService } from '../services/settings.service';
 
 export const DEFAULT_BRAND_CONFIG: BrandConfig = {
   name: 'SalesFlow',
@@ -11,11 +10,7 @@ export const DEFAULT_BRAND_CONFIG: BrandConfig = {
 };
 
 export function loadBrandConfig(): BrandConfig {
-  return settingsService.getInitialBrandSettings();
-}
-
-export function saveBrandConfig(config: BrandConfig): void {
-  settingsService.saveBrandSettings(config);
+  return DEFAULT_BRAND_CONFIG;
 }
 
 export function getAccentClasses(accent: BrandAccent) {

@@ -7,9 +7,22 @@ import { resultsService } from '../services/results.service';
  * Communicates strictly with resultsService.
  */
 export function useResults(month: number, year: number) {
-  const [entries, setEntries] = useState<DailyEntry[]>(() => {
-    return resultsService.getInitialDailyResults(month, year);
-  });
+  const [entries, setEntries] = useState<DailyEntry[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    resultsService.getDailyResults(month, year).then(data => {
+      if (isMounted) {
+        setEntries(data);
+      }
+    }).catch(err => {
+      console.error('Erro ao carregar resultados:', err);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [month, year]);
 
   const saveDailyResult = useCallback(async (newUpdate: DailyEntry) => {
     const updated = await resultsService.saveDailyResult(newUpdate, entries);

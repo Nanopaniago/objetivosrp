@@ -56,7 +56,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     setIsLoading(true);
 
     try {
-      const result = await authService.login(trimmedInput, trimmedPass, users);
+      const result = await authService.login(trimmedInput, trimmedPass);
       if (result.error || !result.user) {
         setErrorMsg(result.error || 'Credenciais inválidas. Verifique os dados introduzidos.');
         setIsLoading(false);
@@ -103,8 +103,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     Supabase
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                    Modo Local
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200/60">
+                    Configuração Pendente
                   </span>
                 )}
               </div>
@@ -114,6 +114,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <Lock className="w-4 h-4" />
             </div>
           </div>
+
+          {supabaseConnected && users.length === 0 && (
+            <div className="mb-5 p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-amber-800 text-xs flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">Base de dados sem utilizadores</p>
+                <p className="text-amber-700 mt-0.5">
+                  Nenhum utilizador encontrado no Supabase. Crie o primeiro utilizador administrador no Supabase Auth/profiles.
+                </p>
+              </div>
+            </div>
+          )}
 
           {errorMsg && (
             <div className="mb-5 p-3.5 rounded-2xl bg-rose-50/90 border border-rose-200/80 text-rose-800 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">

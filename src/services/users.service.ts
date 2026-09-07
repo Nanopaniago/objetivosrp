@@ -1,5 +1,4 @@
 import { User } from '../types';
-import { INITIAL_USERS } from '../data/initialData';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase/client';
 import { profileToUser, userToProfile, ProfileRow } from '../lib/supabase/types';
 
@@ -8,11 +7,10 @@ import { profileToUser, userToProfile, ProfileRow } from '../lib/supabase/types'
  *
  * Persists and queries user profiles directly from the Supabase `profiles` table.
  * Does NOT use localStorage as database.
+ * Does NOT use mock data fallbacks.
  * Does NOT keep hardcoded credentials or super_admin bypasses.
  */
 export class UsersService {
-  private inMemoryCache: User[] = INITIAL_USERS;
-
   /**
    * Retrieves all users from Supabase `profiles` table.
    * Throws if Supabase returns an error so the UI can display it clearly.
@@ -31,17 +29,14 @@ export class UsersService {
       }
 
       if (data && data.length > 0) {
-        const mapped = (data as ProfileRow[]).map(r => profileToUser(r));
-        this.inMemoryCache = mapped;
-        return mapped;
+        return (data as ProfileRow[]).map(r => profileToUser(r));
       }
 
       // If database has 0 profiles yet
       return [];
     }
 
-    // Unconfigured demo mode only
-    return this.inMemoryCache;
+    return [];
   }
 
   /**
@@ -59,6 +54,7 @@ export class UsersService {
 
         if (error) {
           console.error(`Erro ao pesquisar utilizador ${id} no Supabase:`, error.message);
+          throw new Error(`Falha ao carregar utilizador: ${error.message}`);
         }
 
         if (data) {
@@ -66,18 +62,18 @@ export class UsersService {
         }
       } catch (err) {
         console.error(`Erro ao obter utilizador ${id}:`, err);
+        throw err;
       }
     }
 
-    return this.inMemoryCache.find(u => u.id === id) || null;
+    return null;
   }
 
   /**
-   * Saves or synchronizes users in memory and Supabase.
+   * Saves or synchronizes users in Supabase.
    */
-  async saveUsers(users: User[]): Promise<void> {
-    this.inMemoryCache = users;
-    // Real persistence is handled atomically via createUser, updateUser, deleteUser
+  async saveUsers(_users: User[]): Promise<void> {
+    // Persistence is handled atomically via createUser, updateUser, deleteUser
   }
 
   /**
@@ -100,9 +96,7 @@ export class UsersService {
         }
 
         if (data) {
-          const created = profileToUser(data as ProfileRow);
-          this.inMemoryCache = [...this.inMemoryCache.filter(u => u.id !== created.id), created];
-          return created;
+          return profileToUser(data as ProfileRow);
         }
       } catch (err) {
         console.error('Erro na criação de utilizador:', err);
@@ -110,8 +104,7 @@ export class UsersService {
       }
     }
 
-    this.inMemoryCache = [...this.inMemoryCache.filter(u => u.id !== newUser.id), newUser];
-    return newUser;
+    throw new Error('Supabase não está configurado para criar utilizadores.');
   }
 
   /**
@@ -134,9 +127,7 @@ export class UsersService {
         }
 
         if (data) {
-          const updated = profileToUser(data as ProfileRow);
-          this.inMemoryCache = this.inMemoryCache.map(u => (u.id === updated.id ? updated : u));
-          return updated;
+          return profileToUser(data as ProfileRow);
         }
       } catch (err) {
         console.error('Erro na atualização de utilizador:', err);
@@ -144,8 +135,7 @@ export class UsersService {
       }
     }
 
-    this.inMemoryCache = this.inMemoryCache.map(u => (u.id === updatedUser.id ? updatedUser : u));
-    return updatedUser;
+    throw new Error('Supabase não está configurado para atualizar utilizadores.');
   }
 
   /**
@@ -164,14 +154,15 @@ export class UsersService {
           console.error(`Erro ao eliminar perfil ${userId} no Supabase:`, error.message);
           throw new Error(`Falha ao eliminar utilizador: ${error.message}`);
         }
+
+        return true;
       } catch (err) {
         console.error('Erro ao eliminar utilizador:', err);
         throw err;
       }
     }
 
-    this.inMemoryCache = this.inMemoryCache.filter(u => u.id !== userId);
-    return true;
+    throw new Error('Supabase não está configurado para eliminar utilizadores.');
   }
 
   /**
