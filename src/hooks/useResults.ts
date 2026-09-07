@@ -11,10 +11,6 @@ export function useResults(month: number, year: number) {
     return resultsService.getInitialDailyResults(month, year);
   });
 
-  useEffect(() => {
-    resultsService.saveDailyResults(entries);
-  }, [entries]);
-
   const saveDailyResult = useCallback(async (newUpdate: DailyEntry) => {
     const updated = await resultsService.saveDailyResult(newUpdate, entries);
     setEntries(updated);

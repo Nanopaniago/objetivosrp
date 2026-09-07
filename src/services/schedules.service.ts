@@ -1,90 +1,147 @@
 import { WorkSchedule } from '../types';
 import { generateInitialSchedules } from '../data/initialData';
-
-export const SCHEDULES_STORAGE_KEY = 'salesflow_schedules_v3';
+import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase/client';
+import {
+  workScheduleRowToSchedule,
+  scheduleToWorkScheduleRow,
+  WorkScheduleRow,
+} from '../lib/supabase/types';
 
 /**
- * Schedules Service (Work Schedules / Escala & Folgas)
+ * Schedules Service
  *
- * Encapsulates work shifts, off-days, and schedules per seller and month.
- * Backed by localStorage and initial generator fallback.
- * Future: Will query and mutate Supabase `work_schedules` table.
+ * Persists and queries seller work shifts and days off directly from the Supabase `work_schedules` table.
+ * Does NOT rely on localStorage.
  */
 export class SchedulesService {
-  /**
-   * Loads initial schedules from storage or generates default distribution for the month.
-   */
+  private inMemoryCache: WorkSchedule[] = [];
+
+  constructor() {
+    const today = new Date();
+    this.inMemoryCache = generateInitialSchedules(today.getMonth() + 1, today.getFullYear());
+  }
+
   getInitialSchedules(month: number, year: number): WorkSchedule[] {
-    try {
-      const saved = localStorage.getItem(SCHEDULES_STORAGE_KEY);
-      if (saved) {
-        const parsed: WorkSchedule[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.error('Error loading initial schedules from storage', e);
-    }
+    const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
+    const cached = this.inMemoryCache.filter(s => s.date.startsWith(monthPrefix));
+    if (cached.length > 0) return cached;
     return generateInitialSchedules(month, year);
   }
 
-  /**
-   * Retrieves all schedules, optionally filtered by month, year, and seller.
-   */
   async getSchedules(month?: number, year?: number, sellerId?: string): Promise<WorkSchedule[]> {
-    const d = new Date();
-    const currentM = month ?? d.getMonth() + 1;
-    const currentY = year ?? d.getFullYear();
+    const client = getSupabaseClient();
+    if (client && isSupabaseConfigured()) {
+      try {
+        let query = client.from('work_schedules').select('*');
 
-    let list = this.getInitialSchedules(currentM, currentY);
+        if (sellerId) {
+          query = query.eq('seller_id', sellerId);
+        }
 
-    if (sellerId) {
-      list = list.filter(s => s.sellerId === sellerId);
+        const { data, error } = await query;
+
+        if (error) {
+          console.error('Erro ao pesquisar escalas no Supabase:', error.message);
+          throw error;
+        }
+
+        if (data && data.length > 0) {
+          let mapped = (data as WorkScheduleRow[]).map(r => workScheduleRowToSchedule(r));
+
+          if (month !== undefined && year !== undefined) {
+            const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
+            mapped = mapped.filter(s => s.date.startsWith(monthPrefix));
+          }
+
+          if (mapped.length > 0) {
+            this.inMemoryCache = mapped;
+            return mapped;
+          }
+        }
+
+        // If no schedules exist in Supabase for this period, return initial sample schedules
+        if (month && year) {
+          return generateInitialSchedules(month, year);
+        }
+      } catch (err) {
+        console.error('Falha ao comunicar com Supabase work_schedules:', err);
+      }
     }
 
     if (month && year) {
-      list = list.filter(s => {
-        const [sYear, sMonth] = s.date.split('-').map(Number);
-        return sYear === year && sMonth === month;
-      });
+      const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
+      const filtered = this.inMemoryCache.filter(s => s.date.startsWith(monthPrefix));
+      return filtered.length > 0 ? filtered : generateInitialSchedules(month, year);
     }
 
-    return list;
+    return this.inMemoryCache;
   }
 
-  /**
-   * Saves the entire list of schedules to storage.
-   */
   async saveSchedules(schedules: WorkSchedule[]): Promise<WorkSchedule[]> {
-    try {
-      localStorage.setItem(SCHEDULES_STORAGE_KEY, JSON.stringify(schedules));
-    } catch (e) {
-      console.error('Error saving schedules to storage', e);
+    const client = getSupabaseClient();
+    if (client && isSupabaseConfigured()) {
+      try {
+        const rows = schedules.map(s => scheduleToWorkScheduleRow(s));
+        const { data, error } = await client
+          .from('work_schedules')
+          .upsert(rows as any, { onConflict: 'seller_id,date' })
+          .select();
+
+        if (error) {
+          console.error('Erro ao guardar escalas no Supabase:', error.message);
+          throw new Error(`Falha ao gravar escalas: ${error.message}`);
+        }
+
+        if (data) {
+          const mapped = (data as WorkScheduleRow[]).map(r => workScheduleRowToSchedule(r));
+          this.inMemoryCache = mapped;
+          return mapped;
+        }
+      } catch (err) {
+        console.error('Erro na persistência de escalas:', err);
+        throw err;
+      }
     }
+
+    this.inMemoryCache = schedules;
     return schedules;
   }
 
-  /**
-   * Updates or replaces a specific schedule entry.
-   */
-  async updateSchedule(schedule: WorkSchedule, currentPool?: WorkSchedule[]): Promise<WorkSchedule[]> {
-    const d = new Date();
-    const [sYear, sMonth] = schedule.date.split('-').map(Number);
-    const pool = currentPool || this.getInitialSchedules(sMonth || d.getMonth() + 1, sYear || d.getFullYear());
+  async updateSchedule(schedule: WorkSchedule): Promise<WorkSchedule> {
+    const client = getSupabaseClient();
+    if (client && isSupabaseConfigured()) {
+      try {
+        const row = scheduleToWorkScheduleRow(schedule);
+        const { data, error } = await client
+          .from('work_schedules')
+          .upsert(row as any, { onConflict: 'seller_id,date' })
+          .select()
+          .single();
 
-    const index = pool.findIndex(s => s.sellerId === schedule.sellerId && s.date === schedule.date);
-    let updated: WorkSchedule[];
+        if (error) {
+          console.error('Erro ao atualizar escala no Supabase:', error.message);
+          throw new Error(`Falha ao atualizar escala: ${error.message}`);
+        }
 
-    if (index >= 0) {
-      updated = [...pool];
-      updated[index] = schedule;
-    } else {
-      updated = [...pool, schedule];
+        if (data) {
+          const mapped = workScheduleRowToSchedule(data as WorkScheduleRow);
+          this.inMemoryCache = [
+            ...this.inMemoryCache.filter(s => !(s.sellerId === mapped.sellerId && s.date === mapped.date)),
+            mapped,
+          ];
+          return mapped;
+        }
+      } catch (err) {
+        console.error('Erro ao atualizar escala individual:', err);
+        throw err;
+      }
     }
 
-    await this.saveSchedules(updated);
-    return updated;
+    this.inMemoryCache = [
+      ...this.inMemoryCache.filter(s => !(s.sellerId === schedule.sellerId && s.date === schedule.date)),
+      schedule,
+    ];
+    return schedule;
   }
 }
 

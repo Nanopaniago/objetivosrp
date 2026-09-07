@@ -1,126 +1,218 @@
 import { User } from '../types';
 import { INITIAL_USERS } from '../data/initialData';
-
-export const USERS_STORAGE_KEY = 'salesflow_users_v3';
+import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase/client';
+import { profileToUser, userToProfile, ProfileRow } from '../lib/supabase/types';
 
 /**
- * Normalizes user records loaded from storage to ensure backwards compatibility
- * and presence of mandatory attributes (username, password, super_admin credentials).
+ * Normalizes user records loaded from fallback to ensure required fields.
  */
 function normalizeUsersList(users: User[]): User[] {
-  const defaultSuperAdmin = INITIAL_USERS.find(u => u.role === 'super_admin')!;
-  const hasSuperAdmin = users.some(
-    u => u.role === 'super_admin' || u.id === 'user-super-admin' || u.username === 'nanopaniagopt' || u.username === 'paniago26'
-  );
-
-  let normalized: User[] = users.map(u => {
-    if (u.role === 'super_admin' || u.id === 'user-super-admin' || u.username === 'paniago26' || u.username === 'nanopaniagopt') {
+  return users.map(u => {
+    if (u.role === 'super_admin' || u.id === 'user-super-admin' || u.username === 'nanopaniagopt' || u.username === 'paniago26') {
       return {
         ...u,
-        id: 'user-super-admin',
-        name: u.name && u.name !== 'Super Administrador' && u.name !== 'Super Admin (paniago26)' ? u.name : 'Super Admin (nanopaniagopt)',
+        id: u.id || 'user-super-admin',
+        name: u.name && !u.name.includes('paniago26') ? u.name : 'Super Admin (nanopaniagopt)',
         username: 'nanopaniagopt',
-        email: u.email && !u.email.includes('superadmin') && !u.email.includes('paniago26') ? u.email : 'nanopaniagopt@salesflow.pt',
-        password: '96171990',
+        email: u.email || 'nanopaniagopt@salesflow.pt',
         role: 'super_admin' as const,
       };
     }
     return {
       ...u,
       username: u.username || (u.email ? u.email.split('@')[0].toLowerCase() : u.name.toLowerCase().replace(/\s+/g, '.')),
-      password: u.password || '123',
     };
   });
-
-  if (!hasSuperAdmin) {
-    normalized = [defaultSuperAdmin, ...normalized];
-  }
-
-  return normalized;
 }
 
 /**
  * Users Service
  *
- * Encapsulates user queries and mutations.
- * Backed by localStorage and INITIAL_USERS fallback.
- * Future: Will query Supabase `profiles` table.
+ * Persists and queries user profiles directly from the Supabase `profiles` table.
+ * Does NOT use localStorage for permanent user data.
  */
 export class UsersService {
+  private inMemoryCache: User[] = normalizeUsersList(INITIAL_USERS);
+
   /**
-   * Synchronously loads users from storage (useful for initial React state).
+   * Synchronous getter for initial React state before async fetch completes.
    */
   getInitialUsers(): User[] {
-    try {
-      const saved = localStorage.getItem(USERS_STORAGE_KEY);
-      if (saved) {
-        const parsed: User[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return normalizeUsersList(parsed);
-        }
-      }
-    } catch (e) {
-      console.error('Error loading initial users from storage', e);
-    }
-    return INITIAL_USERS;
+    return this.inMemoryCache;
   }
 
   /**
-   * Retrieves all users (async interface for future Supabase compatibility).
+   * Retrieves all users from Supabase `profiles` table.
+   * If table is completely empty and Supabase is connected, seeds the initial profiles.
    */
   async getUsers(): Promise<User[]> {
-    return this.getInitialUsers();
+    const client = getSupabaseClient();
+    if (client && isSupabaseConfigured()) {
+      try {
+        const { data, error } = await client
+          .from('profiles')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (error) {
+          console.error('Erro ao pesquisar perfis no Supabase:', error.message);
+          throw error;
+        }
+
+        if (data && data.length > 0) {
+          const mapped = (data as ProfileRow[]).map(r => profileToUser(r));
+          this.inMemoryCache = mapped;
+          return mapped;
+        }
+
+        // If Supabase table is completely empty, automatically seed initial users
+        console.info('Tabela profiles vazia no Supabase. A inicializar seed de perfis...');
+        const initialProfiles = INITIAL_USERS.map(u => userToProfile(u));
+        const { data: inserted, error: insertErr } = await client
+          .from('profiles')
+          .insert(initialProfiles as any)
+          .select();
+
+        if (!insertErr && inserted) {
+          const mapped = (inserted as ProfileRow[]).map(r => profileToUser(r));
+          this.inMemoryCache = mapped;
+          return mapped;
+        }
+      } catch (err) {
+        console.error('Falha ao comunicar com Supabase profiles:', err);
+      }
+    }
+
+    return this.inMemoryCache;
   }
 
   /**
    * Retrieves a single user by ID.
    */
   async getUserById(id: string): Promise<User | null> {
-    const users = await this.getUsers();
-    return users.find(u => u.id === id) || null;
+    const client = getSupabaseClient();
+    if (client && isSupabaseConfigured()) {
+      try {
+        const { data, error } = await client
+          .from('profiles')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+
+        if (error) {
+          console.error(`Erro ao pesquisar utilizador ${id} no Supabase:`, error.message);
+        }
+
+        if (data) {
+          return profileToUser(data as ProfileRow);
+        }
+      } catch (err) {
+        console.error(`Erro ao obter utilizador ${id}:`, err);
+      }
+    }
+
+    return this.inMemoryCache.find(u => u.id === id) || null;
   }
 
   /**
-   * Saves the entire list of users to storage.
+   * Saves or synchronizes users in memory and Supabase.
    */
   async saveUsers(users: User[]): Promise<void> {
-    try {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-    } catch (e) {
-      console.error('Error saving users to storage', e);
-    }
+    this.inMemoryCache = users;
+    // Real persistence is handled atomically via createUser, updateUser, deleteUser
   }
 
   /**
-   * Creates a new user and appends to storage.
-   * Future: Will execute `supabase.from('profiles').insert(userToProfile(user))`.
+   * Creates a new user profile in Supabase.
    */
   async createUser(newUser: User): Promise<User> {
-    const current = await this.getUsers();
-    const updated = [...current, newUser];
-    await this.saveUsers(updated);
+    const client = getSupabaseClient();
+    if (client && isSupabaseConfigured()) {
+      try {
+        const profileInsert = userToProfile(newUser);
+        const { data, error } = await client
+          .from('profiles')
+          .insert(profileInsert as any)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Erro ao criar perfil no Supabase:', error.message);
+          throw new Error(`Falha ao criar utilizador no Supabase: ${error.message}`);
+        }
+
+        if (data) {
+          const created = profileToUser(data as ProfileRow);
+          this.inMemoryCache = [...this.inMemoryCache.filter(u => u.id !== created.id), created];
+          return created;
+        }
+      } catch (err) {
+        console.error('Erro na criação de utilizador:', err);
+        throw err;
+      }
+    }
+
+    this.inMemoryCache = [...this.inMemoryCache.filter(u => u.id !== newUser.id), newUser];
     return newUser;
   }
 
   /**
-   * Updates an existing user record.
-   * Future: Will execute `supabase.from('profiles').update(userToProfile(user)).eq('id', user.id)`.
+   * Updates an existing user profile in Supabase.
    */
   async updateUser(updatedUser: User): Promise<User> {
-    const current = await this.getUsers();
-    const updated = current.map(u => (u.id === updatedUser.id ? updatedUser : u));
-    await this.saveUsers(updated);
+    const client = getSupabaseClient();
+    if (client && isSupabaseConfigured()) {
+      try {
+        const profileUpdate = userToProfile(updatedUser);
+        const { data, error } = await (client.from('profiles') as any)
+          .update(profileUpdate)
+          .eq('id', updatedUser.id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error(`Erro ao atualizar perfil ${updatedUser.id} no Supabase:`, error.message);
+          throw new Error(`Falha ao atualizar utilizador: ${error.message}`);
+        }
+
+        if (data) {
+          const updated = profileToUser(data as ProfileRow);
+          this.inMemoryCache = this.inMemoryCache.map(u => (u.id === updated.id ? updated : u));
+          return updated;
+        }
+      } catch (err) {
+        console.error('Erro na atualização de utilizador:', err);
+        throw err;
+      }
+    }
+
+    this.inMemoryCache = this.inMemoryCache.map(u => (u.id === updatedUser.id ? updatedUser : u));
     return updatedUser;
   }
 
   /**
-   * Deletes a user by ID.
-   * Future: Will execute `supabase.from('profiles').delete().eq('id', userId)`.
+   * Deletes a user profile from Supabase.
    */
   async deleteUser(userId: string): Promise<boolean> {
-    const current = await this.getUsers();
-    const filtered = current.filter(u => u.id !== userId);
-    await this.saveUsers(filtered);
+    const client = getSupabaseClient();
+    if (client && isSupabaseConfigured()) {
+      try {
+        const { error } = await client
+          .from('profiles')
+          .delete()
+          .eq('id', userId);
+
+        if (error) {
+          console.error(`Erro ao eliminar perfil ${userId} no Supabase:`, error.message);
+          throw new Error(`Falha ao eliminar utilizador: ${error.message}`);
+        }
+      } catch (err) {
+        console.error('Erro ao eliminar utilizador:', err);
+        throw err;
+      }
+    }
+
+    this.inMemoryCache = this.inMemoryCache.filter(u => u.id !== userId);
     return true;
   }
 

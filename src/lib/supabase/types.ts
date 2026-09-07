@@ -33,37 +33,56 @@ export interface Database {
         Row: StoreRow;
         Insert: StoreInsert;
         Update: StoreUpdate;
+        Relationships: [];
       };
       profiles: {
         Row: ProfileRow;
         Insert: ProfileInsert;
         Update: ProfileUpdate;
+        Relationships: [];
       };
       goal_categories: {
         Row: GoalCategoryRow;
         Insert: GoalCategoryInsert;
         Update: GoalCategoryUpdate;
+        Relationships: [];
       };
       monthly_goals: {
         Row: MonthlyGoalRow;
         Insert: MonthlyGoalInsert;
         Update: MonthlyGoalUpdate;
+        Relationships: [];
       };
       daily_results: {
         Row: DailyResultRow;
         Insert: DailyResultInsert;
         Update: DailyResultUpdate;
+        Relationships: [];
       };
       work_schedules: {
         Row: WorkScheduleRow;
         Insert: WorkScheduleInsert;
         Update: WorkScheduleUpdate;
+        Relationships: [];
       };
       store_settings: {
         Row: StoreSettingRow;
         Insert: StoreSettingInsert;
         Update: StoreSettingUpdate;
+        Relationships: [];
       };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
     };
   };
 }
@@ -327,5 +346,26 @@ export function categoryRowToGoalCategory(row: GoalCategoryRow): GoalCategory {
     metricType: row.metric_type,
     iconName: row.icon_name,
     badgeColor: row.badge_color,
+  };
+}
+
+export function storeSettingRowToBrandConfig(row: StoreSettingRow): BrandConfig {
+  const val = (row.value || {}) as unknown as Partial<BrandConfig>;
+  return {
+    name: val.name || 'SalesFlow',
+    highlightWord: val.highlightWord ?? 'Flow',
+    tagline: val.tagline || 'Gestão de Metas & Desempenho Comercial',
+    logoType: val.logoType || 'preset',
+    logoPreset: val.logoPreset || 'leaf',
+    customLogoUrl: val.customLogoUrl,
+    accent: val.accent || 'apple_blue',
+  };
+}
+
+export function brandConfigToStoreSettingRow(config: BrandConfig): StoreSettingInsert {
+  return {
+    id: 'brand_config',
+    key: 'brand_config',
+    value: config as unknown as Record<string, unknown>,
   };
 }

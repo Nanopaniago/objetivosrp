@@ -1,10 +1,12 @@
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Database } from './types';
+
 /**
- * Supabase Client Module (Preparation Layer)
+ * Supabase Client Module
  *
- * NOTE: Supabase connection is NOT active yet.
- * This module prepares the architectural integration points so that when
- * `@supabase/supabase-js` is added and environment variables are supplied,
- * switching data layers requires zero UI changes.
+ * Provides a real, functional client using @supabase/supabase-js.
+ * Reads VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_ANON_KEY.
+ * Never exposes service-role keys or sensitive server credentials.
  */
 
 export interface SupabaseConfig {
@@ -18,7 +20,14 @@ export interface SupabaseConfig {
 export function isSupabaseConfigured(): boolean {
   const url = import.meta.env.VITE_SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
-  return Boolean(url && key && url.trim().length > 0 && key.trim().length > 0);
+  return Boolean(
+    url &&
+    key &&
+    url.trim().length > 0 &&
+    key.trim().length > 0 &&
+    !url.includes('your-project.supabase.co') &&
+    url.startsWith('http')
+  );
 }
 
 /**
@@ -28,7 +37,7 @@ export function getSupabaseConfig(): SupabaseConfig | null {
   const url = import.meta.env.VITE_SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-  if (url && key) {
+  if (url && key && url.trim().length > 0 && key.trim().length > 0) {
     return {
       url: url.trim(),
       anonKey: key.trim(),
@@ -38,18 +47,39 @@ export function getSupabaseConfig(): SupabaseConfig | null {
   return null;
 }
 
+let supabaseInstance: SupabaseClient<Database> | null = null;
+
 /**
- * Placeholder for future Supabase client instance.
- * When `@supabase/supabase-js` is installed and connected, this function
- * will instantiate and return `createClient<Database>(url, key)`.
+ * Instantiates and returns the Supabase Client singleton.
+ * Returns null if Supabase environment variables are not yet configured.
  */
-export function getSupabaseClient(): unknown | null {
-  if (!isSupabaseConfigured()) {
+export function getSupabaseClient(): SupabaseClient<Database> | null {
+  if (supabaseInstance) {
+    return supabaseInstance;
+  }
+
+  const config = getSupabaseConfig();
+  if (!config || !isSupabaseConfigured()) {
     return null;
   }
 
-  // Future integration point:
-  // import { createClient } from '@supabase/supabase-js';
-  // return createClient<Database>(config.url, config.anonKey);
-  return null;
+  try {
+    supabaseInstance = createClient<Database>(config.url, config.anonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      },
+    });
+    return supabaseInstance;
+  } catch (err) {
+    console.error('Falha ao inicializar o cliente Supabase:', err);
+    return null;
+  }
 }
+
+/**
+ * Default exportable singleton instance (can be null if unconfigured).
+ */
+export const supabase = getSupabaseClient();

@@ -11,10 +11,6 @@ export function useGoals(month: number, year: number) {
     return goalsService.getInitialGoals(month, year);
   });
 
-  useEffect(() => {
-    goalsService.saveGoals(goals);
-  }, [goals]);
-
   const saveGoals = useCallback(async (updatedGoals: MonthlyGoal[]) => {
     setGoals(updatedGoals);
     await goalsService.saveGoals(updatedGoals);

@@ -1,48 +1,96 @@
 import { BrandConfig } from '../types';
 import { DEFAULT_BRAND_CONFIG } from '../utils/brand';
-
-export const BRAND_STORAGE_KEY = 'salesflow_brand_settings_v1';
+import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase/client';
+import {
+  storeSettingRowToBrandConfig,
+  brandConfigToStoreSettingRow,
+  StoreSettingRow,
+} from '../lib/supabase/types';
 
 /**
  * Settings Service
  *
- * Encapsulates application preferences, brand identity, logos, and custom store settings.
- * Backed by localStorage.
- * Future: Will query and mutate Supabase `store_settings` table.
+ * Persists and retrieves brand identity, store settings and customization from Supabase `store_settings` table.
+ * Does NOT rely on localStorage.
  */
 export class SettingsService {
-  /**
-   * Loads initial brand configuration synchronously from storage.
-   */
+  private inMemoryBrand: BrandConfig = { ...DEFAULT_BRAND_CONFIG };
+
   getInitialBrandSettings(): BrandConfig {
-    try {
-      const saved = localStorage.getItem(BRAND_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return { ...DEFAULT_BRAND_CONFIG, ...parsed };
-      }
-    } catch (e) {
-      console.warn('Error loading brand settings from storage', e);
-    }
-    return DEFAULT_BRAND_CONFIG;
+    return this.inMemoryBrand;
   }
 
-  /**
-   * Asynchronously retrieves brand configuration.
-   */
   async getBrandSettings(): Promise<BrandConfig> {
-    return this.getInitialBrandSettings();
+    const client = getSupabaseClient();
+    if (client && isSupabaseConfigured()) {
+      try {
+        const { data, error } = await client
+          .from('store_settings')
+          .select('*')
+          .eq('key', 'brand_config')
+          .maybeSingle();
+
+        if (error) {
+          console.error('Erro ao pesquisar configurações da marca no Supabase:', error.message);
+          throw error;
+        }
+
+        if (data) {
+          const mapped = storeSettingRowToBrandConfig(data as StoreSettingRow);
+          this.inMemoryBrand = mapped;
+          return mapped;
+        }
+
+        // Auto-seed default brand configuration in Supabase
+        console.info('Configuração da marca inexistente no Supabase. A inicializar...');
+        const initialRow = brandConfigToStoreSettingRow(DEFAULT_BRAND_CONFIG);
+        const { data: inserted, error: insertErr } = await client
+          .from('store_settings')
+          .insert(initialRow as any)
+          .select()
+          .single();
+
+        if (!insertErr && inserted) {
+          const mapped = storeSettingRowToBrandConfig(inserted as StoreSettingRow);
+          this.inMemoryBrand = mapped;
+          return mapped;
+        }
+      } catch (err) {
+        console.error('Falha ao comunicar com Supabase store_settings:', err);
+      }
+    }
+
+    return this.inMemoryBrand;
   }
 
-  /**
-   * Saves brand configuration.
-   */
   async saveBrandSettings(config: BrandConfig): Promise<BrandConfig> {
-    try {
-      localStorage.setItem(BRAND_STORAGE_KEY, JSON.stringify(config));
-    } catch (e) {
-      console.error('Error saving brand settings to storage', e);
+    const client = getSupabaseClient();
+    if (client && isSupabaseConfigured()) {
+      try {
+        const row = brandConfigToStoreSettingRow(config);
+        const { data, error } = await client
+          .from('store_settings')
+          .upsert(row as any, { onConflict: 'key' })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Erro ao guardar configurações da marca no Supabase:', error.message);
+          throw new Error(`Falha ao guardar configurações: ${error.message}`);
+        }
+
+        if (data) {
+          const mapped = storeSettingRowToBrandConfig(data as StoreSettingRow);
+          this.inMemoryBrand = mapped;
+          return mapped;
+        }
+      } catch (err) {
+        console.error('Erro na gravação da configuração da marca:', err);
+        throw err;
+      }
     }
+
+    this.inMemoryBrand = config;
     return config;
   }
 }

@@ -9,11 +9,6 @@ import { usersService } from '../services/users.service';
 export function useUsers() {
   const [users, setUsers] = useState<User[]>(() => usersService.getInitialUsers());
 
-  // Keep storage in sync whenever users state changes
-  useEffect(() => {
-    usersService.saveUsers(users);
-  }, [users]);
-
   const createUser = useCallback(async (newUser: User) => {
     setUsers(prev => [...prev, newUser]);
     await usersService.createUser(newUser);

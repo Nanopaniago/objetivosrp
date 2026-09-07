@@ -9,8 +9,12 @@ import {
   ShieldCheck,
   AlertCircle,
   ArrowRight,
+  Cloud,
+  CheckCircle2,
 } from 'lucide-react';
 import { getAccentClasses } from '../utils/brand';
+import { authService } from '../services/auth.service';
+import { isSupabaseConfigured } from '../lib/supabase/client';
 
 interface LoginScreenProps {
   users: User[];
@@ -30,16 +34,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const accentClasses = getAccentClasses(brand.accent);
+  const supabaseConnected = isSupabaseConfigured();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
-    const trimmedInput = username.trim().toLowerCase();
+    const trimmedInput = username.trim();
     const trimmedPass = password.trim();
 
     if (!trimmedInput) {
-      setErrorMsg('Por favor, introduza o seu nome de utilizador.');
+      setErrorMsg('Por favor, introduza o seu nome de utilizador ou e-mail.');
       return;
     }
 
@@ -50,43 +55,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      // Find user by username, name or email fallback, or special super_admin match
-      const foundUser = users.find(u => {
-        if (u.active === false) return false;
-
-        const usernameMatch = u.username && u.username.toLowerCase() === trimmedInput;
-        const nameMatch = u.name.toLowerCase() === trimmedInput || u.name.toLowerCase().replace(/\s+/g, '.') === trimmedInput;
-        const emailMatch = u.email && u.email.toLowerCase() === trimmedInput;
-        const emailPrefixMatch = u.email && u.email.toLowerCase().split('@')[0] === trimmedInput;
-        const isSuperAdminMatch =
-          (u.role === 'super_admin' || u.id === 'user-super-admin') &&
-          (trimmedInput === 'nanopaniagopt' || trimmedInput === 'nanopaniagopt@salesflow.pt' || trimmedInput === 'nanopaniagopt@gmail.com' || trimmedInput === 'paniago26');
-
-        return usernameMatch || nameMatch || emailPrefixMatch || emailMatch || isSuperAdminMatch;
-      });
-
-      if (!foundUser) {
-        setErrorMsg('Nome de utilizador não encontrado. Verifique as suas credenciais.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Password verification:
-      const expectedPassword =
-        foundUser.role === 'super_admin' || foundUser.username === 'nanopaniagopt' || foundUser.username === 'paniago26'
-          ? (foundUser.password || '96171990')
-          : (foundUser.password || '123');
-
-      if (trimmedPass !== expectedPassword) {
-        setErrorMsg('Palavra-passe incorreta. Por favor tente novamente.');
+    try {
+      const result = await authService.login(trimmedInput, trimmedPass, users);
+      if (result.error || !result.user) {
+        setErrorMsg(result.error || 'Credenciais inválidas. Verifique os dados introduzidos.');
         setIsLoading(false);
         return;
       }
 
       setIsLoading(false);
-      onLogin(foundUser);
-    }, 250);
+      onLogin(result.user);
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMsg(err.message || 'Falha ao autenticar. Tente novamente.');
+    }
   };
 
   return (
@@ -113,7 +95,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-7 sm:p-9 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] border border-black/[0.06]">
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-black/[0.04]">
             <div>
-              <h2 className="text-lg font-bold text-slate-900 tracking-tight">Iniciar Sessão</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight">Iniciar Sessão</h2>
+                {supabaseConnected ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                    <Cloud className="w-2.5 h-2.5" />
+                    Supabase
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                    Modo Local
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-slate-500 mt-0.5">Introduza as suas credenciais para continuar</p>
             </div>
             <div className="p-2.5 rounded-2xl bg-black/[0.03] text-slate-700 border border-black/[0.04]">

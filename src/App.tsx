@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   User,
   GoalCategory,
@@ -17,6 +17,7 @@ import {
   schedulesService,
   settingsService,
 } from './services';
+import { isSupabaseConfigured } from './lib/supabase/client';
 import { Navbar } from './components/Navbar';
 import { SellerDashboard } from './components/SellerDashboard';
 import { TeamOverview } from './components/TeamOverview';
@@ -28,6 +29,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { ProfileModal } from './components/ProfileModal';
 import { BrandCustomizerModal } from './components/BrandCustomizerModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { Cloud, CloudOff, AlertCircle, RefreshCw, X, Loader2 } from 'lucide-react';
 
 export default function App() {
   const currentDate = new Date();
@@ -42,6 +44,11 @@ export default function App() {
   useEffect(() => {
     document.title = `${brand.name} - Gestão de Metas & Desempenho`;
   }, [brand.name]);
+
+  // Loading and Error States
+  const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(true);
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Users State (via usersService)
   const [users, setUsers] = useState<User[]>(() => usersService.getInitialUsers());
@@ -59,7 +66,7 @@ export default function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Categories (via categoriesService)
-  const [categories] = useState<GoalCategory[]>(() => categoriesService.getInitialCategories());
+  const [categories, setCategories] = useState<GoalCategory[]>(() => categoriesService.getInitialCategories());
 
   // Goals State (via goalsService)
   const [goals, setGoals] = useState<MonthlyGoal[]>(() => {
@@ -79,26 +86,90 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'team' | 'goals' | 'schedule' | 'users'>('dashboard');
   const [isResultUpdateModalOpen, setIsResultUpdateModalOpen] = useState(false);
 
-  // Sync state changes through services (persists to localStorage / future Supabase)
+  // 1. Initial Session Restoration via Supabase Auth
   useEffect(() => {
-    usersService.saveUsers(users);
-  }, [users]);
+    let isMounted = true;
+
+    async function restoreSession() {
+      try {
+        const sessionUser = await authService.getCurrentSessionUser();
+        if (isMounted) {
+          if (sessionUser) {
+            setAuthenticatedUserId(sessionUser.id);
+            setCurrentUserId(sessionUser.id);
+          } else {
+            setAuthenticatedUserId(null);
+          }
+        }
+      } catch (err: any) {
+        console.error('Erro ao verificar sessão inicial:', err);
+      } finally {
+        if (isMounted) {
+          setIsAuthInitializing(false);
+        }
+      }
+    }
+
+    restoreSession();
+
+    // Listen to Supabase Auth state changes
+    const unsubscribe = authService.onAuthStateChange(user => {
+      if (!isMounted) return;
+      if (user) {
+        setAuthenticatedUserId(user.id);
+        setCurrentUserId(user.id);
+      } else {
+        setAuthenticatedUserId(null);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  // 2. Fetch operational data from Supabase whenever authenticated or month/year changes
+  const loadSupabaseData = useCallback(async (month: number, year: number) => {
+    setIsDataLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const [
+        fetchedUsers,
+        fetchedCategories,
+        fetchedGoals,
+        fetchedEntries,
+        fetchedSchedules,
+        fetchedBrand,
+      ] = await Promise.all([
+        usersService.getUsers(),
+        categoriesService.getCategories(),
+        goalsService.getGoals(month, year),
+        resultsService.getDailyResults(month, year),
+        schedulesService.getSchedules(month, year),
+        settingsService.getBrandSettings(),
+      ]);
+
+      setUsers(fetchedUsers);
+      setCategories(fetchedCategories);
+      setGoals(fetchedGoals);
+      setEntries(fetchedEntries);
+      setSchedules(fetchedSchedules);
+      setBrand(fetchedBrand);
+    } catch (err: any) {
+      console.error('Falha ao carregar dados operacionais:', err);
+      setErrorMessage('Não foi possível carregar alguns dados do Supabase. Verifique a ligação ou as permissões.');
+    } finally {
+      setIsDataLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    authService.setCurrentUserId(currentUserId);
-  }, [currentUserId]);
-
-  useEffect(() => {
-    goalsService.saveGoals(goals);
-  }, [goals]);
-
-  useEffect(() => {
-    resultsService.saveDailyResults(entries);
-  }, [entries]);
-
-  useEffect(() => {
-    schedulesService.saveSchedules(schedules);
-  }, [schedules]);
+    if (authenticatedUserId) {
+      loadSupabaseData(currentMonth, currentYear);
+    }
+  }, [authenticatedUserId, currentMonth, currentYear, loadSupabaseData]);
 
   // Handle Login & Logout via authService
   const handleLogin = (user: User) => {
@@ -108,8 +179,8 @@ export default function App() {
     setCurrentUserId(user.id);
   };
 
-  const handleLogout = () => {
-    authService.clearSession();
+  const handleLogout = async () => {
+    await authService.logout();
     setAuthenticatedUserId(null);
   };
 
@@ -121,29 +192,45 @@ export default function App() {
   const displaySeller = currentUser.role === 'seller' ? currentUser : users.find(u => u.role === 'seller') || users[0] || INITIAL_USERS[0];
   const isSuperAdmin = currentUser.role === 'super_admin';
 
-  const handleSaveBrand = (newBrand: BrandConfig) => {
+  const handleSaveBrand = async (newBrand: BrandConfig) => {
     if (!isSuperAdmin) {
       alert('Apenas o Super Administrador tem permissão para alterar a marca e identidade visual.');
       return;
     }
     setBrand(newBrand);
-    settingsService.saveBrandSettings(newBrand);
+    try {
+      await settingsService.saveBrandSettings(newBrand);
+    } catch (err: any) {
+      setErrorMessage(`Erro ao guardar identidade visual no Supabase: ${err.message || err}`);
+    }
   };
 
   // When a new result update is saved, delegates to resultsService
   const handleSaveResultUpdate = async (newUpdate: DailyEntry) => {
-    const updatedEntries = await resultsService.saveDailyResult(newUpdate, entries);
-    setEntries(updatedEntries);
+    try {
+      const updatedEntries = await resultsService.saveDailyResult(newUpdate, entries);
+      setEntries(updatedEntries);
+    } catch (err: any) {
+      setErrorMessage(`Erro ao guardar lançamento no Supabase: ${err.message || err}`);
+    }
   };
 
   const handleSaveGoals = async (updatedGoals: MonthlyGoal[]) => {
-    setGoals(updatedGoals);
-    await goalsService.saveGoals(updatedGoals);
+    try {
+      setGoals(updatedGoals);
+      await goalsService.saveGoals(updatedGoals);
+    } catch (err: any) {
+      setErrorMessage(`Erro ao guardar metas no Supabase: ${err.message || err}`);
+    }
   };
 
   const handleUpdateSchedule = async (updatedSchedules: WorkSchedule[]) => {
-    setSchedules(updatedSchedules);
-    await schedulesService.saveSchedules(updatedSchedules);
+    try {
+      setSchedules(updatedSchedules);
+      await schedulesService.saveSchedules(updatedSchedules);
+    } catch (err: any) {
+      setErrorMessage(`Erro ao guardar escalas no Supabase: ${err.message || err}`);
+    }
   };
 
   const handleSelectSellerFromTeam = (sellerId: string) => {
@@ -154,30 +241,59 @@ export default function App() {
 
   // User management handlers via usersService
   const handleUpdateUser = async (updatedUser: User) => {
-    setUsers(prev => prev.map(u => (u.id === updatedUser.id ? updatedUser : u)));
-    await usersService.updateUser(updatedUser);
+    try {
+      setUsers(prev => prev.map(u => (u.id === updatedUser.id ? updatedUser : u)));
+      await usersService.updateUser(updatedUser);
+    } catch (err: any) {
+      setErrorMessage(`Erro ao atualizar perfil no Supabase: ${err.message || err}`);
+    }
   };
 
   const handleCreateUser = async (newUser: User) => {
-    setUsers(prev => [...prev, newUser]);
-    await usersService.createUser(newUser);
+    try {
+      setUsers(prev => [...prev, newUser]);
+      await usersService.createUser(newUser);
+    } catch (err: any) {
+      setErrorMessage(`Erro ao criar utilizador no Supabase: ${err.message || err}`);
+    }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    await usersService.deleteUser(userId);
-    if (authenticatedUserId === userId) {
-      handleLogout();
-    } else if (currentUserId === userId) {
-      const remaining = users.filter(u => u.id !== userId);
-      if (remaining.length > 0) {
-        setCurrentUserId(remaining[0].id);
-        authService.setCurrentUserId(remaining[0].id);
+    try {
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      await usersService.deleteUser(userId);
+      if (authenticatedUserId === userId) {
+        handleLogout();
+      } else if (currentUserId === userId) {
+        const remaining = users.filter(u => u.id !== userId);
+        if (remaining.length > 0) {
+          setCurrentUserId(remaining[0].id);
+          authService.setCurrentUserId(remaining[0].id);
+        }
       }
+    } catch (err: any) {
+      setErrorMessage(`Erro ao eliminar utilizador no Supabase: ${err.message || err}`);
     }
   };
 
   const sellersList = users.filter(u => u.role === 'seller' && u.active !== false);
+  const supabaseConnected = isSupabaseConfigured();
+
+  // Initial authentication loading state (Apple Minimalist Splash)
+  if (isAuthInitializing) {
+    return (
+      <div className="min-h-screen bg-[#f5f5f7] flex flex-col items-center justify-center p-6 text-slate-900">
+        <div className="flex flex-col items-center gap-4 animate-in fade-in duration-300">
+          <div className="w-12 h-12 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-black/[0.05] flex items-center justify-center">
+            <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+          </div>
+          <p className="text-xs font-semibold text-slate-500 tracking-tight">
+            A autenticar com Supabase...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // If user is not authenticated, show initial Login Screen
   if (!authenticatedUserId) {
@@ -216,6 +332,30 @@ export default function App() {
         onOpenProfile={() => setIsProfileModalOpen(true)}
         onLogout={handleLogout}
       />
+
+      {/* Global Error Banner if any operation failed */}
+      {errorMessage && (
+        <div className="bg-rose-50 border-b border-rose-200 text-rose-800 px-4 py-2.5 flex items-center justify-between text-xs transition">
+          <div className="flex items-center gap-2 max-w-5xl mx-auto w-full">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span className="font-medium">{errorMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setErrorMessage(null)}
+            className="p-1 text-rose-500 hover:text-rose-800 rounded-md cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Data loading subtle progress bar */}
+      {isDataLoading && (
+        <div className="w-full bg-blue-100 h-1 overflow-hidden">
+          <div className="bg-blue-600 h-full w-1/3 animate-pulse" />
+        </div>
+      )}
 
       {/* Main Content Area - Optimized for mobile viewports and bottom dock */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 pt-3 sm:pt-7 pb-24 md:pb-8">
@@ -281,7 +421,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Result Update Modal (Substitui o antigo modal de lançamentos) */}
+      {/* Result Update Modal */}
       <ResultUpdateModal
         isOpen={isResultUpdateModalOpen}
         onClose={() => setIsResultUpdateModalOpen(false)}
@@ -327,8 +467,20 @@ export default function App() {
       {/* Apple-styled Minimalist Footer (Desktop) */}
       <footer className="hidden md:block border-t border-black/[0.05] bg-white/70 backdrop-blur-md py-5 mt-auto">
         <div className="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div>
-            <span className="font-semibold text-slate-600">{brand.name}</span> &bull; Design Orgânico de Alta Performance
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-600">{brand.name}</span>
+            <span>&bull;</span>
+            {supabaseConnected ? (
+              <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[11px] font-medium border border-emerald-200/60">
+                <Cloud className="w-3 h-3 text-emerald-600" />
+                Supabase Sincronizado
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full text-[11px] font-medium border border-slate-200">
+                <CloudOff className="w-3 h-3 text-slate-400" />
+                Modo Local (Supabase Desconectado)
+              </span>
+            )}
           </div>
           <div className="text-[11px] text-slate-400">
             {brand.tagline || 'Gestão de Metas e Atualização de Resultados'} &bull; {currentYear}

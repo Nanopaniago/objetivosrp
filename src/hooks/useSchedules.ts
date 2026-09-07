@@ -11,19 +11,18 @@ export function useSchedules(month: number, year: number) {
     return schedulesService.getInitialSchedules(month, year);
   });
 
-  useEffect(() => {
-    schedulesService.saveSchedules(schedules);
-  }, [schedules]);
-
   const saveSchedules = useCallback(async (updatedSchedules: WorkSchedule[]) => {
     setSchedules(updatedSchedules);
     await schedulesService.saveSchedules(updatedSchedules);
   }, []);
 
   const updateSchedule = useCallback(async (schedule: WorkSchedule) => {
-    const updated = await schedulesService.updateSchedule(schedule, schedules);
-    setSchedules(updated);
-  }, [schedules]);
+    const updated = await schedulesService.updateSchedule(schedule);
+    setSchedules(prev => [
+      ...prev.filter(s => !(s.sellerId === updated.sellerId && s.date === updated.date)),
+      updated,
+    ]);
+  }, []);
 
   return {
     schedules,
