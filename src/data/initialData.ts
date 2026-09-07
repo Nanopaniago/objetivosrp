@@ -66,10 +66,10 @@ export const DEFAULT_CATEGORIES: GoalCategory[] = [
 export const INITIAL_USERS: User[] = [
   {
     id: 'user-super-admin',
-    name: 'Super Admin (paniago26)',
-    username: 'paniago26',
-    email: 'paniago26@salesflow.pt',
-    password: 'portodemos2026',
+    name: 'Super Admin (nanopaniagopt)',
+    username: 'nanopaniagopt',
+    email: 'nanopaniagopt@salesflow.pt',
+    password: '96171990',
     role: 'super_admin',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     active: true,

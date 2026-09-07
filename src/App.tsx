@@ -7,13 +7,16 @@ import {
   WorkSchedule,
   BrandConfig,
 } from './types';
+import { INITIAL_USERS } from './data/initialData';
 import {
-  DEFAULT_CATEGORIES,
-  INITIAL_USERS,
-  generateInitialGoals,
-  generateInitialEntries,
-  generateInitialSchedules,
-} from './data/initialData';
+  authService,
+  usersService,
+  categoriesService,
+  goalsService,
+  resultsService,
+  schedulesService,
+  settingsService,
+} from './services';
 import { Navbar } from './components/Navbar';
 import { SellerDashboard } from './components/SellerDashboard';
 import { TeamOverview } from './components/TeamOverview';
@@ -25,15 +28,14 @@ import { LoginScreen } from './components/LoginScreen';
 import { ProfileModal } from './components/ProfileModal';
 import { BrandCustomizerModal } from './components/BrandCustomizerModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
-import { loadBrandConfig, saveBrandConfig } from './utils/brand';
 
 export default function App() {
   const currentDate = new Date();
   const [currentMonth, setCurrentMonth] = useState<number>(currentDate.getMonth() + 1);
   const [currentYear, setCurrentYear] = useState<number>(currentDate.getFullYear());
 
-  // Brand Configuration State (Apple style customizable logo, name, colors)
-  const [brand, setBrand] = useState<BrandConfig>(() => loadBrandConfig());
+  // Brand Configuration State (via settingsService)
+  const [brand, setBrand] = useState<BrandConfig>(() => settingsService.getInitialBrandSettings());
   const [isBrandCustomizerOpen, setIsBrandCustomizerOpen] = useState(false);
 
   // Sync document title to brand name
@@ -41,107 +43,74 @@ export default function App() {
     document.title = `${brand.name} - Gestão de Metas & Desempenho`;
   }, [brand.name]);
 
-  // Users State with LocalStorage
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('salesflow_users_v3');
-    const defaultSuperAdmin = INITIAL_USERS.find(u => u.role === 'super_admin')!;
-    if (saved) {
-      try {
-        const parsed: User[] = JSON.parse(saved);
-        const hasSuperAdmin = parsed.some(u => u.role === 'super_admin' || u.id === 'user-super-admin' || u.username === 'paniago26');
-        let list: User[] = parsed.map(u => {
-          if (u.role === 'super_admin' || u.id === 'user-super-admin') {
-            return {
-              ...u,
-              id: 'user-super-admin',
-              name: u.name && u.name !== 'Super Administrador' ? u.name : 'Super Admin (paniago26)',
-              username: 'paniago26',
-              email: u.email && !u.email.includes('superadmin') ? u.email : 'paniago26@salesflow.pt',
-              password: 'portodemos2026',
-              role: 'super_admin' as const,
-            };
-          }
-          return {
-            ...u,
-            username: u.username || (u.email ? u.email.split('@')[0].toLowerCase() : u.name.toLowerCase().replace(/\s+/g, '.')),
-            password: u.password || '123',
-          };
-        });
+  // Users State (via usersService)
+  const [users, setUsers] = useState<User[]>(() => usersService.getInitialUsers());
 
-        if (!hasSuperAdmin) {
-          list = [defaultSuperAdmin, ...list];
-        }
-        return list;
-      } catch (e) {
-        console.error('Error loading users', e);
-      }
-    }
-    return INITIAL_USERS;
-  });
-
-  // Authentication State
+  // Authentication State (via authService)
   const [authenticatedUserId, setAuthenticatedUserId] = useState<string | null>(() => {
-    return localStorage.getItem('salesflow_session_user_id') || null;
+    return authService.getSessionUserId();
   });
 
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
-    const saved = localStorage.getItem('salesflow_current_user_id_v3');
+    const saved = authService.getCurrentUserId();
     return saved || (users[0] ? users[0].id : INITIAL_USERS[0].id);
   });
 
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  const [categories] = useState<GoalCategory[]>(DEFAULT_CATEGORIES);
+  // Categories (via categoriesService)
+  const [categories] = useState<GoalCategory[]>(() => categoriesService.getInitialCategories());
 
+  // Goals State (via goalsService)
   const [goals, setGoals] = useState<MonthlyGoal[]>(() => {
-    const saved = localStorage.getItem('salesflow_goals_v3');
-    return saved ? JSON.parse(saved) : generateInitialGoals(currentMonth, currentYear);
+    return goalsService.getInitialGoals(currentMonth, currentYear);
   });
 
+  // Daily Entries State (via resultsService)
   const [entries, setEntries] = useState<DailyEntry[]>(() => {
-    const saved = localStorage.getItem('salesflow_entries_v3');
-    return saved ? JSON.parse(saved) : generateInitialEntries(currentMonth, currentYear);
+    return resultsService.getInitialDailyResults(currentMonth, currentYear);
   });
 
+  // Schedules State (via schedulesService)
   const [schedules, setSchedules] = useState<WorkSchedule[]>(() => {
-    const saved = localStorage.getItem('salesflow_schedules_v3');
-    return saved ? JSON.parse(saved) : generateInitialSchedules(currentMonth, currentYear);
+    return schedulesService.getInitialSchedules(currentMonth, currentYear);
   });
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'team' | 'goals' | 'schedule' | 'users'>('dashboard');
   const [isResultUpdateModalOpen, setIsResultUpdateModalOpen] = useState(false);
 
-  // Sync to LocalStorage
+  // Sync state changes through services (persists to localStorage / future Supabase)
   useEffect(() => {
-    localStorage.setItem('salesflow_users_v3', JSON.stringify(users));
+    usersService.saveUsers(users);
   }, [users]);
 
   useEffect(() => {
-    localStorage.setItem('salesflow_current_user_id_v3', currentUserId);
+    authService.setCurrentUserId(currentUserId);
   }, [currentUserId]);
 
   useEffect(() => {
-    localStorage.setItem('salesflow_goals_v3', JSON.stringify(goals));
+    goalsService.saveGoals(goals);
   }, [goals]);
 
   useEffect(() => {
-    localStorage.setItem('salesflow_entries_v3', JSON.stringify(entries));
+    resultsService.saveDailyResults(entries);
   }, [entries]);
 
   useEffect(() => {
-    localStorage.setItem('salesflow_schedules_v3', JSON.stringify(schedules));
+    schedulesService.saveSchedules(schedules);
   }, [schedules]);
 
-  // Handle Login & Logout
+  // Handle Login & Logout via authService
   const handleLogin = (user: User) => {
+    authService.setSessionUserId(user.id);
+    authService.setCurrentUserId(user.id);
     setAuthenticatedUserId(user.id);
     setCurrentUserId(user.id);
-    localStorage.setItem('salesflow_session_user_id', user.id);
   };
 
   const handleLogout = () => {
+    authService.clearSession();
     setAuthenticatedUserId(null);
-    localStorage.removeItem('salesflow_session_user_id');
   };
 
   // Current active user
@@ -158,52 +127,52 @@ export default function App() {
       return;
     }
     setBrand(newBrand);
-    saveBrandConfig(newBrand);
+    settingsService.saveBrandSettings(newBrand);
   };
 
-  // When a new result update is saved, it replaces previous result updates for this seller in this month
-  const handleSaveResultUpdate = (newUpdate: DailyEntry) => {
-    setEntries(prev => {
-      const [uYear, uMonth] = newUpdate.date.split('-').map(Number);
-      const otherEntries = prev.filter(e => {
-        if (e.sellerId !== newUpdate.sellerId) return true;
-        const [eYear, eMonth] = e.date.split('-').map(Number);
-        return !(eYear === uYear && eMonth === uMonth);
-      });
-      return [newUpdate, ...otherEntries];
-    });
+  // When a new result update is saved, delegates to resultsService
+  const handleSaveResultUpdate = async (newUpdate: DailyEntry) => {
+    const updatedEntries = await resultsService.saveDailyResult(newUpdate, entries);
+    setEntries(updatedEntries);
   };
 
-  const handleSaveGoals = (updatedGoals: MonthlyGoal[]) => {
+  const handleSaveGoals = async (updatedGoals: MonthlyGoal[]) => {
     setGoals(updatedGoals);
+    await goalsService.saveGoals(updatedGoals);
   };
 
-  const handleUpdateSchedule = (updatedSchedules: WorkSchedule[]) => {
+  const handleUpdateSchedule = async (updatedSchedules: WorkSchedule[]) => {
     setSchedules(updatedSchedules);
+    await schedulesService.saveSchedules(updatedSchedules);
   };
 
   const handleSelectSellerFromTeam = (sellerId: string) => {
     setCurrentUserId(sellerId);
+    authService.setCurrentUserId(sellerId);
     setActiveTab('dashboard');
   };
 
-  // User management handlers
-  const handleUpdateUser = (updatedUser: User) => {
+  // User management handlers via usersService
+  const handleUpdateUser = async (updatedUser: User) => {
     setUsers(prev => prev.map(u => (u.id === updatedUser.id ? updatedUser : u)));
+    await usersService.updateUser(updatedUser);
   };
 
-  const handleCreateUser = (newUser: User) => {
+  const handleCreateUser = async (newUser: User) => {
     setUsers(prev => [...prev, newUser]);
+    await usersService.createUser(newUser);
   };
 
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     setUsers(prev => prev.filter(u => u.id !== userId));
+    await usersService.deleteUser(userId);
     if (authenticatedUserId === userId) {
       handleLogout();
     } else if (currentUserId === userId) {
       const remaining = users.filter(u => u.id !== userId);
       if (remaining.length > 0) {
         setCurrentUserId(remaining[0].id);
+        authService.setCurrentUserId(remaining[0].id);
       }
     }
   };
@@ -232,7 +201,8 @@ export default function App() {
         onSwitchUser={(newId) => {
           setCurrentUserId(newId);
           setAuthenticatedUserId(newId);
-          localStorage.setItem('salesflow_session_user_id', newId);
+          authService.setSessionUserId(newId);
+          authService.setCurrentUserId(newId);
         }}
         currentMonth={currentMonth}
         currentYear={currentYear}

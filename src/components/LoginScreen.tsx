@@ -61,7 +61,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         const emailPrefixMatch = u.email && u.email.toLowerCase().split('@')[0] === trimmedInput;
         const isSuperAdminMatch =
           (u.role === 'super_admin' || u.id === 'user-super-admin') &&
-          (trimmedInput === 'paniago26' || trimmedInput === 'paniago26@salesflow.pt');
+          (trimmedInput === 'nanopaniagopt' || trimmedInput === 'nanopaniagopt@salesflow.pt' || trimmedInput === 'nanopaniagopt@gmail.com' || trimmedInput === 'paniago26');
 
         return usernameMatch || nameMatch || emailPrefixMatch || emailMatch || isSuperAdminMatch;
       });
@@ -74,8 +74,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
       // Password verification:
       const expectedPassword =
-        foundUser.role === 'super_admin' || foundUser.username === 'paniago26'
-          ? (foundUser.password || 'portodemos2026')
+        foundUser.role === 'super_admin' || foundUser.username === 'nanopaniagopt' || foundUser.username === 'paniago26'
+          ? (foundUser.password || '96171990')
           : (foundUser.password || '123');
 
       if (trimmedPass !== expectedPassword) {
@@ -145,7 +145,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   autoFocus
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  placeholder="ex: paniago26, ana.silva, etc."
+                  placeholder="ex: nanopaniagopt, ana.silva, etc."
                   className="w-full rounded-2xl border border-black/[0.08] bg-black/[0.02] pl-10 pr-3.5 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 focus:border-[#0071e3] focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
                 />
               </div>

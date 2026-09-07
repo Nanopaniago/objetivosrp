@@ -1,4 +1,5 @@
 import { BrandConfig, BrandAccent } from '../types';
+import { settingsService } from '../services/settings.service';
 
 export const DEFAULT_BRAND_CONFIG: BrandConfig = {
   name: 'SalesFlow',
@@ -9,27 +10,12 @@ export const DEFAULT_BRAND_CONFIG: BrandConfig = {
   accent: 'apple_blue',
 };
 
-const STORAGE_KEY = 'salesflow_brand_settings_v1';
-
 export function loadBrandConfig(): BrandConfig {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return { ...DEFAULT_BRAND_CONFIG, ...parsed };
-    }
-  } catch (e) {
-    console.warn('Erro ao carregar configurações de marca', e);
-  }
-  return DEFAULT_BRAND_CONFIG;
+  return settingsService.getInitialBrandSettings();
 }
 
 export function saveBrandConfig(config: BrandConfig): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  } catch (e) {
-    console.error('Erro ao salvar marca', e);
-  }
+  settingsService.saveBrandSettings(config);
 }
 
 export function getAccentClasses(accent: BrandAccent) {

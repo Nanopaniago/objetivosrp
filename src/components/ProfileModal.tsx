@@ -29,7 +29,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onUpdateUser,
 }) => {
   const initialPassword =
-    currentUser.password || (currentUser.role === 'super_admin' ? 'portodemos2026' : '123');
+    currentUser.password || (currentUser.role === 'super_admin' ? '96171990' : '123');
   const [name, setName] = useState(currentUser.name);
   const [username, setUsername] = useState(
     currentUser.username || (currentUser.email ? currentUser.email.split('@')[0] : currentUser.name.toLowerCase().replace(/\s+/g, '.'))
@@ -51,7 +51,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     );
     setEmail(currentUser.email || '');
     setPassword(
-      currentUser.password || (currentUser.role === 'super_admin' ? 'portodemos2026' : '123')
+      currentUser.password || (currentUser.role === 'super_admin' ? '96171990' : '123')
     );
     setStoreName(currentUser.storeName || 'Loja Centro - 01');
     setAvatar(currentUser.avatar);
