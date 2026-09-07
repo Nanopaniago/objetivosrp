@@ -30,41 +30,29 @@ export class GoalsService {
   async getGoals(month?: number, year?: number): Promise<MonthlyGoal[]> {
     const client = getSupabaseClient();
     if (client && isSupabaseConfigured()) {
-      try {
-        let query = client.from('monthly_goals').select('*');
+      let query = client.from('monthly_goals').select('*');
 
-        if (month !== undefined) {
-          query = query.eq('month', month);
-        }
-        if (year !== undefined) {
-          query = query.eq('year', year);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-          console.error('Erro ao pesquisar metas no Supabase:', error.message);
-          throw error;
-        }
-
-        if (data && data.length > 0) {
-          const mapped = (data as MonthlyGoalRow[]).map(r => monthlyGoalRowToGoal(r));
-          // Merge with memory cache
-          this.inMemoryCache = [
-            ...this.inMemoryCache.filter(g => (month && g.month === month) && (year && g.year === year) ? false : true),
-            ...mapped,
-          ];
-          return mapped;
-        }
-
-        // If no records in Supabase for this period, return initial defaults
-        if (month && year) {
-          const generated = generateInitialGoals(month, year);
-          return generated;
-        }
-      } catch (err) {
-        console.error('Falha ao comunicar com Supabase monthly_goals:', err);
+      if (month !== undefined) {
+        query = query.eq('month', month);
       }
+      if (year !== undefined) {
+        query = query.eq('year', year);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Erro ao pesquisar metas no Supabase:', error.message);
+        throw new Error(`Falha ao carregar metas do Supabase: ${error.message}`);
+      }
+
+      if (data && data.length > 0) {
+        const mapped = (data as MonthlyGoalRow[]).map(r => monthlyGoalRowToGoal(r));
+        return mapped;
+      }
+
+      // No goals exist yet in Supabase for this period
+      return [];
     }
 
     if (month && year) {

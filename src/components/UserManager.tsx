@@ -80,7 +80,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
     name: '',
     username: '',
     email: '',
-    password: '123',
+    password: '',
     role: 'seller',
     storeName: 'Loja Centro - 01',
     avatar: PRESET_AVATARS[0],
@@ -246,7 +246,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
       name: '',
       username: '',
       email: '',
-      password: '123',
+      password: '',
       role: 'seller',
       storeName: 'Loja Centro - 01',
       avatar: PRESET_AVATARS[Math.floor(Math.random() * PRESET_AVATARS.length)],
@@ -282,7 +282,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
         name: formData.name.trim(),
         username: cleanUsername,
         email: formData.email.trim() || undefined,
-        password: formData.password?.trim() || '123',
+        password: formData.password?.trim() || undefined,
         role: formData.role,
         storeName: formData.storeName.trim() || 'Loja Centro - 01',
         avatar: formData.avatar,
@@ -303,7 +303,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
         name: formData.name.trim(),
         username: cleanUsername,
         email: formData.email.trim() || undefined,
-        password: formData.password?.trim() || editingUser.password || '123',
+        password: formData.password?.trim() || editingUser.password || undefined,
         role: isSuperAdmin ? formData.role : editingUser.role,
         storeName: formData.storeName.trim(),
         avatar: formData.avatar,
@@ -784,7 +784,7 @@ export const UserManager: React.FC<UserManagerProps> = ({
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center justify-between">
                     <span>Palavra-passe</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Padrão: 123</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Opcional</span>
                   </label>
                   <div className="relative">
                     <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />

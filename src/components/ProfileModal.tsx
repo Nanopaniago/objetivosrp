@@ -14,6 +14,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { PRESET_AVATARS } from './UserManager';
+import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase/client';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -28,19 +29,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   currentUser,
   onUpdateUser,
 }) => {
-  const initialPassword =
-    currentUser.password || (currentUser.role === 'super_admin' ? '96171990' : '123');
   const [name, setName] = useState(currentUser.name);
   const [username, setUsername] = useState(
     currentUser.username || (currentUser.email ? currentUser.email.split('@')[0] : currentUser.name.toLowerCase().replace(/\s+/g, '.'))
   );
   const [email, setEmail] = useState(currentUser.email || '');
-  const [password, setPassword] = useState(initialPassword);
+  const [newPassword, setNewPassword] = useState('');
   const [storeName, setStoreName] = useState(currentUser.storeName || 'Loja Centro - 01');
   const [avatar, setAvatar] = useState(currentUser.avatar);
   const [showPassword, setShowPassword] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [successMsg, setSuccessMsg] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,12 +50,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       currentUser.username || (currentUser.email ? currentUser.email.split('@')[0] : currentUser.name.toLowerCase().replace(/\s+/g, '.'))
     );
     setEmail(currentUser.email || '');
-    setPassword(
-      currentUser.password || (currentUser.role === 'super_admin' ? '96171990' : '123')
-    );
+    setNewPassword('');
     setStoreName(currentUser.storeName || 'Loja Centro - 01');
     setAvatar(currentUser.avatar);
     setSuccessMsg(false);
+    setErrorMsg(null);
   }, [currentUser, isOpen]);
 
   if (!isOpen) return null;
@@ -109,8 +108,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     if (file) processImageFile(file);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
     if (!name.trim()) {
       alert('Por favor introduza o seu nome.');
       return;
@@ -119,12 +119,32 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     const fallbackUsername = name.toLowerCase().trim().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.');
     const cleanUsername = username.trim().toLowerCase() || currentUser.username || fallbackUsername;
 
+    // If a new password was typed, update via Supabase Auth
+    if (newPassword.trim()) {
+      if (newPassword.trim().length < 6) {
+        setErrorMsg('A nova palavra-passe deve conter pelo menos 6 caracteres.');
+        return;
+      }
+      const client = getSupabaseClient();
+      if (client && isSupabaseConfigured()) {
+        try {
+          const { error: pwdErr } = await client.auth.updateUser({ password: newPassword.trim() });
+          if (pwdErr) {
+            setErrorMsg(`Erro ao atualizar palavra-passe no Supabase: ${pwdErr.message}`);
+            return;
+          }
+        } catch (err: any) {
+          setErrorMsg(`Erro ao comunicar com Supabase: ${err.message || err}`);
+          return;
+        }
+      }
+    }
+
     const updatedUser: User = {
       ...currentUser,
       name: name.trim(),
       username: cleanUsername,
       email: email.trim() || undefined,
-      password: password.trim() || '123',
       storeName: storeName.trim(),
       avatar: avatar,
       updatedAt: new Date().toISOString(),
@@ -179,6 +199,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           <div className="mx-6 mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
             <Check className="w-4 h-4 text-emerald-600" />
             O seu perfil foi atualizado com sucesso!
+          </div>
+        )}
+
+        {errorMsg && (
+          <div className="mx-6 mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+            <X className="w-4 h-4 text-rose-600" />
+            {errorMsg}
           </div>
         )}
 
@@ -305,16 +332,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center justify-between">
-                <span>Palavra-passe</span>
-                <span className="text-[10px] text-slate-400 font-normal">Para início de sessão</span>
+                <span>Nova Palavra-passe</span>
+                <span className="text-[10px] text-slate-400 font-normal">Deixar em branco para manter</span>
               </label>
               <div className="relative">
                 <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Nova palavra-passe (opcional)"
                   className="w-full rounded-xl border border-slate-300 pl-9 pr-8 py-2 text-xs sm:text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
                 />
                 <button

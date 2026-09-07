@@ -4,85 +4,43 @@ import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase/client'
 import { profileToUser, userToProfile, ProfileRow } from '../lib/supabase/types';
 
 /**
- * Normalizes user records loaded from fallback to ensure required fields.
- */
-function normalizeUsersList(users: User[]): User[] {
-  return users.map(u => {
-    if (u.role === 'super_admin' || u.id === 'user-super-admin' || u.username === 'nanopaniagopt' || u.username === 'paniago26') {
-      return {
-        ...u,
-        id: u.id || 'user-super-admin',
-        name: u.name && !u.name.includes('paniago26') ? u.name : 'Super Admin (nanopaniagopt)',
-        username: 'nanopaniagopt',
-        email: u.email || 'nanopaniagopt@salesflow.pt',
-        role: 'super_admin' as const,
-      };
-    }
-    return {
-      ...u,
-      username: u.username || (u.email ? u.email.split('@')[0].toLowerCase() : u.name.toLowerCase().replace(/\s+/g, '.')),
-    };
-  });
-}
-
-/**
  * Users Service
  *
  * Persists and queries user profiles directly from the Supabase `profiles` table.
- * Does NOT use localStorage for permanent user data.
+ * Does NOT use localStorage as database.
+ * Does NOT keep hardcoded credentials or super_admin bypasses.
  */
 export class UsersService {
-  private inMemoryCache: User[] = normalizeUsersList(INITIAL_USERS);
-
-  /**
-   * Synchronous getter for initial React state before async fetch completes.
-   */
-  getInitialUsers(): User[] {
-    return this.inMemoryCache;
-  }
+  private inMemoryCache: User[] = INITIAL_USERS;
 
   /**
    * Retrieves all users from Supabase `profiles` table.
-   * If table is completely empty and Supabase is connected, seeds the initial profiles.
+   * Throws if Supabase returns an error so the UI can display it clearly.
    */
   async getUsers(): Promise<User[]> {
     const client = getSupabaseClient();
     if (client && isSupabaseConfigured()) {
-      try {
-        const { data, error } = await client
-          .from('profiles')
-          .select('*')
-          .order('name', { ascending: true });
+      const { data, error } = await client
+        .from('profiles')
+        .select('*')
+        .order('name', { ascending: true });
 
-        if (error) {
-          console.error('Erro ao pesquisar perfis no Supabase:', error.message);
-          throw error;
-        }
-
-        if (data && data.length > 0) {
-          const mapped = (data as ProfileRow[]).map(r => profileToUser(r));
-          this.inMemoryCache = mapped;
-          return mapped;
-        }
-
-        // If Supabase table is completely empty, automatically seed initial users
-        console.info('Tabela profiles vazia no Supabase. A inicializar seed de perfis...');
-        const initialProfiles = INITIAL_USERS.map(u => userToProfile(u));
-        const { data: inserted, error: insertErr } = await client
-          .from('profiles')
-          .insert(initialProfiles as any)
-          .select();
-
-        if (!insertErr && inserted) {
-          const mapped = (inserted as ProfileRow[]).map(r => profileToUser(r));
-          this.inMemoryCache = mapped;
-          return mapped;
-        }
-      } catch (err) {
-        console.error('Falha ao comunicar com Supabase profiles:', err);
+      if (error) {
+        console.error('Erro ao pesquisar perfis no Supabase:', error.message);
+        throw new Error(`Falha ao carregar utilizadores do Supabase: ${error.message}`);
       }
+
+      if (data && data.length > 0) {
+        const mapped = (data as ProfileRow[]).map(r => profileToUser(r));
+        this.inMemoryCache = mapped;
+        return mapped;
+      }
+
+      // If database has 0 profiles yet
+      return [];
     }
 
+    // Unconfigured demo mode only
     return this.inMemoryCache;
   }
 

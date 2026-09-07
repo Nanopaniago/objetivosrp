@@ -3,8 +3,8 @@ import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase/client'
 import { profileToUser, ProfileRow } from '../lib/supabase/types';
 import { INITIAL_USERS } from '../data/initialData';
 
-export const AUTH_SESSION_KEY = 'salesflow_session_user_id';
-export const CURRENT_USER_KEY = 'salesflow_current_user_id_v3';
+const DEMO_SESSION_KEY = 'salesflow_demo_session_user_id';
+const ACTIVE_USER_KEY = 'salesflow_active_user_id';
 
 function translateAuthError(message: string): string {
   const lower = message.toLowerCase();
@@ -26,83 +26,87 @@ function translateAuthError(message: string): string {
 /**
  * Authentication Service
  *
- * Implements real Supabase Auth (signInWithPassword, signOut, getSession, onAuthStateChange)
- * with graceful fallback for local development if Supabase credentials are not yet entered.
- * Never persists passwords in localStorage or code.
+ * Exclusively uses Supabase Auth when Supabase is configured:
+ * - signInWithPassword
+ * - signOut
+ * - getSession
+ * - onAuthStateChange
+ *
+ * Never stores passwords or user databases in localStorage.
+ * No hardcoded credentials.
  */
 export class AuthService {
   /**
-   * Retrieves the currently logged in user ID from memory/session.
+   * Returns the session user ID stored in temporary sessionStorage.
    */
   getSessionUserId(): string | null {
     try {
-      return sessionStorage.getItem(AUTH_SESSION_KEY) || localStorage.getItem(AUTH_SESSION_KEY) || null;
+      return sessionStorage.getItem(DEMO_SESSION_KEY);
     } catch {
       return null;
     }
   }
 
   /**
-   * Sets the session user ID.
+   * Sets or clears the session user ID in temporary sessionStorage.
    */
-  setSessionUserId(userId: string): void {
+  setSessionUserId(userId: string | null): void {
     try {
-      sessionStorage.setItem(AUTH_SESSION_KEY, userId);
-      localStorage.setItem(AUTH_SESSION_KEY, userId);
+      if (userId) {
+        sessionStorage.setItem(DEMO_SESSION_KEY, userId);
+      } else {
+        sessionStorage.removeItem(DEMO_SESSION_KEY);
+      }
     } catch {
       // Ignored
     }
   }
 
   /**
-   * Clears the current session.
-   */
-  clearSession(): void {
-    try {
-      sessionStorage.removeItem(AUTH_SESSION_KEY);
-      localStorage.removeItem(AUTH_SESSION_KEY);
-    } catch {
-      // Ignored
-    }
-  }
-
-  /**
-   * Retrieves the active selected user ID for the dashboard view.
+   * Returns the currently active selected user ID.
    */
   getCurrentUserId(): string | null {
     try {
-      return sessionStorage.getItem(CURRENT_USER_KEY) || localStorage.getItem(CURRENT_USER_KEY) || null;
+      return sessionStorage.getItem(ACTIVE_USER_KEY);
     } catch {
       return null;
     }
   }
 
   /**
-   * Saves the active selected user ID for the dashboard view.
+   * Sets or clears the active selected user ID.
    */
-  setCurrentUserId(userId: string): void {
+  setCurrentUserId(userId: string | null): void {
     try {
-      sessionStorage.setItem(CURRENT_USER_KEY, userId);
-      localStorage.setItem(CURRENT_USER_KEY, userId);
+      if (userId) {
+        sessionStorage.setItem(ACTIVE_USER_KEY, userId);
+      } else {
+        sessionStorage.removeItem(ACTIVE_USER_KEY);
+      }
     } catch {
       // Ignored
     }
   }
 
   /**
-   * Checks if there is an active session in Supabase or local session.
+   * Checks if there is an active session in Supabase or temporary demo session.
    */
   async isAuthenticated(): Promise<boolean> {
     const client = getSupabaseClient();
     if (client && isSupabaseConfigured()) {
       try {
         const { data } = await client.auth.getSession();
-        return Boolean(data?.session);
+        return Boolean(data?.session?.user);
       } catch {
         return false;
       }
     }
-    return Boolean(this.getSessionUserId());
+    // Demo fallback only
+    try {
+      return Boolean(sessionStorage.getItem(DEMO_SESSION_KEY));
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -124,16 +128,14 @@ export class AuthService {
           .maybeSingle();
 
         if (profileError) {
-          console.error('Erro ao obter perfil do utilizador:', profileError);
+          console.error('Erro ao obter perfil do utilizador no Supabase:', profileError);
         }
 
         if (profile) {
-          const user = profileToUser(profile as ProfileRow);
-          this.setSessionUserId(user.id);
-          return user;
+          return profileToUser(profile as ProfileRow);
         }
 
-        // Fallback user if profile row was not yet created
+        // Profile row fallback if profile trigger is still executing
         const fallbackUser: User = {
           id: session.user.id,
           name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Utilizador',
@@ -146,7 +148,6 @@ export class AuthService {
           createdAt: session.user.created_at,
           updatedAt: session.user.updated_at || session.user.created_at,
         };
-        this.setSessionUserId(fallbackUser.id);
         return fallbackUser;
       } catch (e) {
         console.error('Erro ao verificar sessão Supabase:', e);
@@ -154,17 +155,20 @@ export class AuthService {
       }
     }
 
-    // Local / unconfigured fallback:
-    const localId = this.getSessionUserId();
-    if (localId) {
-      const found = INITIAL_USERS.find(u => u.id === localId) || INITIAL_USERS[0];
-      return found;
+    // Local / unconfigured demo mode only (when Supabase credentials are not in .env):
+    try {
+      const demoId = sessionStorage.getItem(DEMO_SESSION_KEY);
+      if (demoId) {
+        return INITIAL_USERS.find(u => u.id === demoId) || INITIAL_USERS[0];
+      }
+    } catch {
+      // Ignored
     }
     return null;
   }
 
   /**
-   * Logs in a user using Supabase Auth or dev fallback.
+   * Logs in a user using Supabase Auth or unconfigured demo fallback.
    */
   async login(
     identifier: string,
@@ -184,7 +188,7 @@ export class AuthService {
       try {
         let loginEmail = cleanId;
 
-        // If username was provided instead of email, lookup email from profiles
+        // If username was provided instead of email, lookup associated email in profiles
         if (!cleanId.includes('@')) {
           const { data: profileLookup, error: lookupError } = await client
             .from('profiles')
@@ -193,20 +197,26 @@ export class AuthService {
             .maybeSingle();
 
           if (lookupError) {
-            console.warn('Aviso na pesquisa de username:', lookupError.message);
+            console.warn('Aviso na pesquisa de username no Supabase:', lookupError.message);
           }
 
           const profileByUsername = profileLookup as ProfileRow | null;
-          if (profileByUsername) {
-            if (profileByUsername.active === false) {
-              return { user: null, error: 'Esta conta está inativa. Contacte o administrador.' };
-            }
-            if (profileByUsername.email) {
-              loginEmail = profileByUsername.email;
-            }
+          if (!profileByUsername) {
+            return { user: null, error: 'Utilizador não encontrado no sistema.' };
+          }
+
+          if (profileByUsername.active === false) {
+            return { user: null, error: 'Esta conta está inativa. Contacte o administrador.' };
+          }
+
+          if (profileByUsername.email) {
+            loginEmail = profileByUsername.email;
+          } else {
+            return { user: null, error: 'Este perfil não tem um endereço de e-mail associado para autenticação.' };
           }
         }
 
+        // Authenticate via Supabase Auth
         const { data, error } = await client.auth.signInWithPassword({
           email: loginEmail,
           password: password,
@@ -217,7 +227,7 @@ export class AuthService {
         }
 
         if (!data.user) {
-          return { user: null, error: 'Erro ao autenticar. Nenhuma sessão devolvida.' };
+          return { user: null, error: 'Erro ao autenticar. Nenhuma sessão devolvida pelo Supabase.' };
         }
 
         // Fetch user profile from Supabase
@@ -231,33 +241,30 @@ export class AuthService {
           console.error('Erro ao carregar perfil do utilizador:', profileErr);
         }
 
-        let authenticatedUser: User;
         if (profile) {
-          authenticatedUser = profileToUser(profile as ProfileRow);
-        } else {
-          authenticatedUser = {
-            id: data.user.id,
-            name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Utilizador',
-            username: data.user.user_metadata?.username || cleanId.toLowerCase(),
-            email: data.user.email || undefined,
-            role: (data.user.user_metadata?.role as any) || 'seller',
-            avatar: data.user.user_metadata?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-            active: true,
-            storeName: 'Loja Principal',
-            createdAt: data.user.created_at,
-            updatedAt: data.user.updated_at || data.user.created_at,
-          };
+          return { user: profileToUser(profile as ProfileRow) };
         }
 
-        this.setSessionUserId(authenticatedUser.id);
-        this.setCurrentUserId(authenticatedUser.id);
+        const authenticatedUser: User = {
+          id: data.user.id,
+          name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Utilizador',
+          username: data.user.user_metadata?.username || cleanId.toLowerCase(),
+          email: data.user.email || undefined,
+          role: (data.user.user_metadata?.role as any) || 'seller',
+          avatar: data.user.user_metadata?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          active: true,
+          storeName: 'Loja Principal',
+          createdAt: data.user.created_at,
+          updatedAt: data.user.updated_at || data.user.created_at,
+        };
+
         return { user: authenticatedUser };
       } catch (err: any) {
         return { user: null, error: `Falha na conexão com Supabase Auth: ${err.message || err}` };
       }
     }
 
-    // Local development fallback (when Supabase credentials are not yet set in .env):
+    // Unconfigured demo mode only (when Supabase credentials are not configured in .env):
     const lowerInput = cleanId.toLowerCase();
     const pool = localPool.length > 0 ? localPool : INITIAL_USERS;
     const foundUser = pool.find(u => {
@@ -268,24 +275,19 @@ export class AuthService {
     });
 
     if (!foundUser) {
-      return { user: null, error: 'Utilizador não encontrado.' };
+      return { user: null, error: 'Utilizador de demonstração não encontrado.' };
     }
 
     if (!foundUser.active) {
-      return { user: null, error: 'Esta conta está inativa. Contacte o administrador.' };
+      return { user: null, error: 'Esta conta está inativa.' };
     }
 
-    const expectedPassword =
-      foundUser.role === 'super_admin' || foundUser.username === 'nanopaniagopt'
-        ? (foundUser.password || '96171990')
-        : (foundUser.password || '123');
-
-    if (password !== expectedPassword) {
-      return { user: null, error: 'Palavra-passe incorreta.' };
+    try {
+      sessionStorage.setItem(DEMO_SESSION_KEY, foundUser.id);
+    } catch {
+      // Ignored
     }
 
-    this.setSessionUserId(foundUser.id);
-    this.setCurrentUserId(foundUser.id);
     return { user: foundUser };
   }
 
@@ -301,7 +303,11 @@ export class AuthService {
         console.warn('Aviso ao efetuar logout no Supabase:', err);
       }
     }
-    this.clearSession();
+    try {
+      sessionStorage.removeItem(DEMO_SESSION_KEY);
+    } catch {
+      // Ignored
+    }
   }
 
   /**
@@ -312,7 +318,11 @@ export class AuthService {
     if (client && isSupabaseConfigured()) {
       const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_OUT' || !session) {
-          this.clearSession();
+          try {
+            sessionStorage.removeItem(DEMO_SESSION_KEY);
+          } catch {
+            // Ignored
+          }
           callback(null);
         } else if (session.user) {
           const { data: profile } = await client

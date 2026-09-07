@@ -33,43 +33,34 @@ export class ResultsService {
   async getDailyResults(month?: number, year?: number, sellerId?: string): Promise<DailyEntry[]> {
     const client = getSupabaseClient();
     if (client && isSupabaseConfigured()) {
-      try {
-        let query = client.from('daily_results').select('*');
+      let query = client.from('daily_results').select('*');
 
-        if (sellerId) {
-          query = query.eq('seller_id', sellerId);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-          console.error('Erro ao pesquisar resultados diários no Supabase:', error.message);
-          throw error;
-        }
-
-        if (data && data.length > 0) {
-          let mapped = (data as DailyResultRow[]).map(r => dailyResultRowToEntry(r));
-
-          if (month !== undefined && year !== undefined) {
-            mapped = mapped.filter(e => {
-              const [y, m] = e.date.split('-').map(Number);
-              return y === year && m === month;
-            });
-          }
-
-          if (mapped.length > 0) {
-            this.inMemoryCache = mapped;
-            return mapped;
-          }
-        }
-
-        // If no records exist yet for this period, return default sample entries
-        if (month && year) {
-          return generateInitialEntries(month, year);
-        }
-      } catch (err) {
-        console.error('Falha ao comunicar com Supabase daily_results:', err);
+      if (sellerId) {
+        query = query.eq('seller_id', sellerId);
       }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Erro ao pesquisar resultados diários no Supabase:', error.message);
+        throw new Error(`Falha ao carregar resultados diários do Supabase: ${error.message}`);
+      }
+
+      if (data && data.length > 0) {
+        let mapped = (data as DailyResultRow[]).map(r => dailyResultRowToEntry(r));
+
+        if (month !== undefined && year !== undefined) {
+          mapped = mapped.filter(e => {
+            const [y, m] = e.date.split('-').map(Number);
+            return y === year && m === month;
+          });
+        }
+
+        return mapped;
+      }
+
+      // No results recorded yet in Supabase
+      return [];
     }
 
     if (month && year) {

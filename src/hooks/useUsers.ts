@@ -7,7 +7,19 @@ import { usersService } from '../services/users.service';
  * Communicates strictly with usersService.
  */
 export function useUsers() {
-  const [users, setUsers] = useState<User[]>(() => usersService.getInitialUsers());
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    usersService.getUsers().then(fetched => {
+      if (isMounted) setUsers(fetched);
+    }).catch(err => {
+      console.error('Erro ao carregar utilizadores em useUsers:', err);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const createUser = useCallback(async (newUser: User) => {
     setUsers(prev => [...prev, newUser]);

@@ -7,7 +7,7 @@ import {
   WorkSchedule,
   BrandConfig,
 } from './types';
-import { INITIAL_USERS } from './data/initialData';
+import { DEFAULT_BRAND_CONFIG } from './utils/brand';
 import {
   authService,
   usersService,
@@ -37,7 +37,7 @@ export default function App() {
   const [currentYear, setCurrentYear] = useState<number>(currentDate.getFullYear());
 
   // Brand Configuration State (via settingsService)
-  const [brand, setBrand] = useState<BrandConfig>(() => settingsService.getInitialBrandSettings());
+  const [brand, setBrand] = useState<BrandConfig>(DEFAULT_BRAND_CONFIG);
   const [isBrandCustomizerOpen, setIsBrandCustomizerOpen] = useState(false);
 
   // Sync document title to brand name
@@ -50,59 +50,71 @@ export default function App() {
   const [isDataLoading, setIsDataLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Users State (via usersService)
-  const [users, setUsers] = useState<User[]>(() => usersService.getInitialUsers());
+  // Users State (via usersService, starts empty until loaded)
+  const [users, setUsers] = useState<User[]>([]);
 
   // Authentication State (via authService)
   const [authenticatedUserId, setAuthenticatedUserId] = useState<string | null>(() => {
     return authService.getSessionUserId();
   });
 
-  const [currentUserId, setCurrentUserId] = useState<string>(() => {
-    const saved = authService.getCurrentUserId();
-    return saved || (users[0] ? users[0].id : INITIAL_USERS[0].id);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(() => {
+    return authService.getCurrentUserId();
   });
 
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  // Categories (via categoriesService)
-  const [categories, setCategories] = useState<GoalCategory[]>(() => categoriesService.getInitialCategories());
+  // Categories (via categoriesService, starts empty)
+  const [categories, setCategories] = useState<GoalCategory[]>([]);
 
-  // Goals State (via goalsService)
-  const [goals, setGoals] = useState<MonthlyGoal[]>(() => {
-    return goalsService.getInitialGoals(currentMonth, currentYear);
-  });
+  // Goals State (via goalsService, starts empty)
+  const [goals, setGoals] = useState<MonthlyGoal[]>([]);
 
-  // Daily Entries State (via resultsService)
-  const [entries, setEntries] = useState<DailyEntry[]>(() => {
-    return resultsService.getInitialDailyResults(currentMonth, currentYear);
-  });
+  // Daily Entries State (via resultsService, starts empty)
+  const [entries, setEntries] = useState<DailyEntry[]>([]);
 
-  // Schedules State (via schedulesService)
-  const [schedules, setSchedules] = useState<WorkSchedule[]>(() => {
-    return schedulesService.getInitialSchedules(currentMonth, currentYear);
-  });
+  // Schedules State (via schedulesService, starts empty)
+  const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'team' | 'goals' | 'schedule' | 'users'>('dashboard');
   const [isResultUpdateModalOpen, setIsResultUpdateModalOpen] = useState(false);
 
-  // 1. Initial Session Restoration via Supabase Auth
+  // 1. Initial Session Restoration via authService
   useEffect(() => {
     let isMounted = true;
 
-    async function restoreSession() {
+    async function initSessionAndUsers() {
       try {
         const sessionUser = await authService.getCurrentSessionUser();
-        if (isMounted) {
-          if (sessionUser) {
-            setAuthenticatedUserId(sessionUser.id);
-            setCurrentUserId(sessionUser.id);
-          } else {
-            setAuthenticatedUserId(null);
+        if (!isMounted) return;
+
+        if (sessionUser) {
+          setAuthenticatedUserId(sessionUser.id);
+          setCurrentUserId(sessionUser.id);
+        } else {
+          setAuthenticatedUserId(null);
+          // Pre-load available users and brand configuration for the login screen
+          try {
+            const [fetchedUsers, fetchedBrand] = await Promise.all([
+              usersService.getUsers(),
+              settingsService.getBrandSettings(),
+            ]);
+            if (isMounted) {
+              setUsers(fetchedUsers);
+              setBrand(fetchedBrand);
+            }
+          } catch (loadErr: any) {
+            console.error('Erro ao carregar dados prévios de autenticação:', loadErr);
+            if (isMounted && isSupabaseConfigured()) {
+              setErrorMessage(loadErr.message || 'Falha ao ligar ao Supabase.');
+            }
           }
         }
       } catch (err: any) {
         console.error('Erro ao verificar sessão inicial:', err);
+        if (isMounted && isSupabaseConfigured()) {
+          setErrorMessage(err.message || 'Falha na autenticação inicial com o Supabase.');
+        }
       } finally {
         if (isMounted) {
           setIsAuthInitializing(false);
@@ -110,9 +122,9 @@ export default function App() {
       }
     }
 
-    restoreSession();
+    initSessionAndUsers();
 
-    // Listen to Supabase Auth state changes
+    // Listen to Auth state changes
     const unsubscribe = authService.onAuthStateChange(user => {
       if (!isMounted) return;
       if (user) {
@@ -157,9 +169,16 @@ export default function App() {
       setEntries(fetchedEntries);
       setSchedules(fetchedSchedules);
       setBrand(fetchedBrand);
+
+      // Verify or assign active seller
+      setCurrentUserId(prevId => {
+        if (prevId && fetchedUsers.some(u => u.id === prevId)) return prevId;
+        const firstSeller = fetchedUsers.find(u => u.role === 'seller');
+        return firstSeller ? firstSeller.id : (fetchedUsers[0]?.id || null);
+      });
     } catch (err: any) {
       console.error('Falha ao carregar dados operacionais:', err);
-      setErrorMessage('Não foi possível carregar alguns dados do Supabase. Verifique a ligação ou as permissões.');
+      setErrorMessage(err.message || 'Não foi possível carregar os dados do Supabase. Verifique a ligação.');
     } finally {
       setIsDataLoading(false);
     }
@@ -186,11 +205,13 @@ export default function App() {
 
   // Current active user
   const effectiveUserId = authenticatedUserId || currentUserId;
-  const currentUser = users.find(u => u.id === effectiveUserId) || users[0] || INITIAL_USERS[0];
+  const currentUser = users.find(u => u.id === effectiveUserId) || users[0];
 
   // If active user is not a seller (e.g. Gerente/Admin), we pick the first seller for the dashboard view
-  const displaySeller = currentUser.role === 'seller' ? currentUser : users.find(u => u.role === 'seller') || users[0] || INITIAL_USERS[0];
-  const isSuperAdmin = currentUser.role === 'super_admin';
+  const displaySeller = currentUser
+    ? (currentUser.role === 'seller' ? currentUser : users.find(u => u.role === 'seller') || currentUser)
+    : undefined;
+  const isSuperAdmin = currentUser?.role === 'super_admin';
 
   const handleSaveBrand = async (newBrand: BrandConfig) => {
     if (!isSuperAdmin) {
@@ -280,7 +301,7 @@ export default function App() {
   const supabaseConnected = isSupabaseConfigured();
 
   // Initial authentication loading state (Apple Minimalist Splash)
-  if (isAuthInitializing) {
+  if (isAuthInitializing || (authenticatedUserId && isDataLoading && users.length === 0 && !errorMessage)) {
     return (
       <div className="min-h-screen bg-[#f5f5f7] flex flex-col items-center justify-center p-6 text-slate-900">
         <div className="flex flex-col items-center gap-4 animate-in fade-in duration-300">
@@ -288,15 +309,45 @@ export default function App() {
             <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
           </div>
           <p className="text-xs font-semibold text-slate-500 tracking-tight">
-            A autenticar com Supabase...
+            {isAuthInitializing ? 'A verificar autenticação...' : 'A sincronizar dados com Supabase...'}
           </p>
         </div>
       </div>
     );
   }
 
+  // If user is authenticated but loading completely failed and no users could be retrieved
+  if (authenticatedUserId && users.length === 0 && errorMessage) {
+    return (
+      <div className="min-h-screen bg-[#f5f5f7] flex flex-col items-center justify-center p-6 text-slate-900">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] border border-rose-200 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-slate-900">Erro de Comunicação com Supabase</h2>
+          <p className="text-xs text-rose-700 font-medium bg-rose-50 p-3 rounded-xl">{errorMessage}</p>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => loadSupabaseData(currentMonth, currentYear)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-xs hover:bg-blue-700 transition cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Tentar Novamente
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition cursor-pointer"
+            >
+              Terminar Sessão
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // If user is not authenticated, show initial Login Screen
-  if (!authenticatedUserId) {
+  if (!authenticatedUserId || !currentUser) {
     return (
       <LoginScreen
         users={users}
@@ -340,13 +391,23 @@ export default function App() {
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span className="font-medium">{errorMessage}</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setErrorMessage(null)}
-            className="p-1 text-rose-500 hover:text-rose-800 rounded-md cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => loadSupabaseData(currentMonth, currentYear)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 hover:bg-rose-200 font-semibold cursor-pointer text-[11px]"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Recarregar Dados
+            </button>
+            <button
+              type="button"
+              onClick={() => setErrorMessage(null)}
+              className="p-1 text-rose-500 hover:text-rose-800 rounded-md cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -359,7 +420,7 @@ export default function App() {
 
       {/* Main Content Area - Optimized for mobile viewports and bottom dock */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 pt-3 sm:pt-7 pb-24 md:pb-8">
-        {activeTab === 'dashboard' && (
+        {activeTab === 'dashboard' && displaySeller && (
           <SellerDashboard
             seller={displaySeller}
             currentMonth={currentMonth}
@@ -422,19 +483,21 @@ export default function App() {
       </main>
 
       {/* Result Update Modal */}
-      <ResultUpdateModal
-        isOpen={isResultUpdateModalOpen}
-        onClose={() => setIsResultUpdateModalOpen(false)}
-        sellerId={displaySeller.id}
-        sellerName={displaySeller.name}
-        allSellers={sellersList.length > 0 ? sellersList : users.filter(u => u.role === 'seller')}
-        categories={categories}
-        goals={goals}
-        existingEntries={entries}
-        currentMonth={currentMonth}
-        currentYear={currentYear}
-        onSaveResultUpdate={handleSaveResultUpdate}
-      />
+      {displaySeller && (
+        <ResultUpdateModal
+          isOpen={isResultUpdateModalOpen}
+          onClose={() => setIsResultUpdateModalOpen(false)}
+          sellerId={displaySeller.id}
+          sellerName={displaySeller.name}
+          allSellers={sellersList.length > 0 ? sellersList : users.filter(u => u.role === 'seller')}
+          categories={categories}
+          goals={goals}
+          existingEntries={entries}
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+          onSaveResultUpdate={handleSaveResultUpdate}
+        />
+      )}
 
       {/* Profile Edit Modal */}
       <ProfileModal

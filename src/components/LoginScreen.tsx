@@ -139,7 +139,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   autoFocus
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  placeholder="ex: nanopaniagopt, ana.silva, etc."
+                  placeholder="ex: utilizador ou email@exemplo.com"
                   className="w-full rounded-2xl border border-black/[0.08] bg-black/[0.02] pl-10 pr-3.5 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 focus:border-[#0071e3] focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
                 />
               </div>

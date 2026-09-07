@@ -231,13 +231,12 @@ export type StoreSettingUpdate = Partial<StoreSettingInsert>;
 // MAPPERS: Domain Types <-> Supabase Rows
 // ==========================================
 
-export function profileToUser(row: ProfileRow, fallbackPassword = '123'): User {
+export function profileToUser(row: ProfileRow): User {
   return {
     id: row.id,
     name: row.name,
     username: row.username,
     email: row.email || undefined,
-    password: fallbackPassword,
     role: row.role,
     avatar: row.avatar_url,
     active: row.active,

@@ -31,41 +31,32 @@ export class SchedulesService {
   async getSchedules(month?: number, year?: number, sellerId?: string): Promise<WorkSchedule[]> {
     const client = getSupabaseClient();
     if (client && isSupabaseConfigured()) {
-      try {
-        let query = client.from('work_schedules').select('*');
+      let query = client.from('work_schedules').select('*');
 
-        if (sellerId) {
-          query = query.eq('seller_id', sellerId);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-          console.error('Erro ao pesquisar escalas no Supabase:', error.message);
-          throw error;
-        }
-
-        if (data && data.length > 0) {
-          let mapped = (data as WorkScheduleRow[]).map(r => workScheduleRowToSchedule(r));
-
-          if (month !== undefined && year !== undefined) {
-            const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
-            mapped = mapped.filter(s => s.date.startsWith(monthPrefix));
-          }
-
-          if (mapped.length > 0) {
-            this.inMemoryCache = mapped;
-            return mapped;
-          }
-        }
-
-        // If no schedules exist in Supabase for this period, return initial sample schedules
-        if (month && year) {
-          return generateInitialSchedules(month, year);
-        }
-      } catch (err) {
-        console.error('Falha ao comunicar com Supabase work_schedules:', err);
+      if (sellerId) {
+        query = query.eq('seller_id', sellerId);
       }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Erro ao pesquisar escalas no Supabase:', error.message);
+        throw new Error(`Falha ao carregar escalas do Supabase: ${error.message}`);
+      }
+
+      if (data && data.length > 0) {
+        let mapped = (data as WorkScheduleRow[]).map(r => workScheduleRowToSchedule(r));
+
+        if (month !== undefined && year !== undefined) {
+          const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
+          mapped = mapped.filter(s => s.date.startsWith(monthPrefix));
+        }
+
+        return mapped;
+      }
+
+      // No work schedules in Supabase for this period
+      return [];
     }
 
     if (month && year) {
