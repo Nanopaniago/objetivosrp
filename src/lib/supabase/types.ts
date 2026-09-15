@@ -299,14 +299,21 @@ export function dailyResultRowToEntry(row: DailyResultRow): DailyEntry {
 }
 
 export function dailyEntryToResultRow(entry: DailyEntry): DailyResultInsert {
-  return {
-    id: entry.id,
+  const row: DailyResultInsert = {
     seller_id: entry.sellerId,
     date: entry.date,
     values: entry.values,
     note: entry.note || null,
     updated_by: entry.updatedBy || null,
   };
+
+  // Mantém o UUID quando o lançamento já existe.
+  // Para novos lançamentos, o PostgreSQL gera o UUID automaticamente.
+  if (entry.id) {
+    row.id = entry.id;
+  }
+
+  return row;
 }
 
 export function workScheduleRowToSchedule(row: WorkScheduleRow): WorkSchedule {

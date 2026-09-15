@@ -201,11 +201,7 @@ export function calculateCategoryPerformance(
       const [eYear, eMonth] = e.date.split('-').map(Number);
       return eYear === year && eMonth === month;
     })
-    .sort((a, b) => {
-      const timeA = a.updatedAt || a.createdAt || `${a.date}T00:00:00Z`;
-      const timeB = b.updatedAt || b.createdAt || `${b.date}T00:00:00Z`;
-      return timeB.localeCompare(timeA);
-    });
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   // The latest result update replaces previous results
   const latestUpdate = sellerEntries[0];

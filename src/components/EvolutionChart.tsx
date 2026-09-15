@@ -83,68 +83,163 @@ export const EvolutionChart: React.FC<EvolutionChartProps> = ({
   }, [currentYear, currentMonth, daysInMonth, entries, seller.id]);
 
   // Prepare chart dataset
-  const chartData = useMemo(() => {
+    const chartData = useMemo(() => {
     const dataPoints = [];
 
     // Monthly goals by category
     const goalMap: Record<string, number> = {};
     goals.forEach(g => {
-      if (g.sellerId === seller.id && g.year === currentYear && g.month === currentMonth) {
+      if (
+        g.sellerId === seller.id &&
+        g.year === currentYear &&
+        g.month === currentMonth
+      ) {
         goalMap[g.categorySlug] = g.target;
       }
     });
 
-    // Total work days in month from schedule
-    const totalWorkDays = summary.scheduleStats.totalMonthWorkDays || 22;
-    const pastWorkDays = summary.scheduleStats.pastWorkedDays || 1;
-    const remainingWorkDays = summary.scheduleStats.remainingWorkDays || 0;
+    const isAll = selectedSlug === 'all';
+    const activeGoal = isAll ? 100 : goalMap[selectedSlug] || 1;
 
-    // Get current accumulated values from calculation
-    const currentAccumulatedMap: Record<string, number> = {};
+    // Only this seller and this month
+    const sellerEntries = entries
+      .filter(e => {
+        const [y, m] = e.date.split('-').map(Number);
+
+        return (
+          e.sellerId === seller.id &&
+          y === currentYear &&
+          m === currentMonth
+        );
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    /*
+     * IMPORTANT:
+     * daily_results contains SNAPSHOTS, not daily sales.
+     *
+     * Example:
+     * 05/09 = 3
+     * 06/09 = 4
+     * 07/09 = 6
+     *
+     * The chart must show:
+     * 3 → 4 → 6
+     *
+     * It must NEVER calculate:
+     * 3 → 7 → 13
+     */
+
+    const categoryHistory: Record<
+      string,
+      Record<number, number>
+    > = {};
+
     categories.forEach(cat => {
-      currentAccumulatedMap[cat.slug] = summary.categories[cat.slug]?.accumulated || 0;
+      categoryHistory[cat.slug] = {};
+
+      sellerEntries.forEach(entry => {
+        const day = Number(entry.date.split('-')[2]);
+        const value = entry.values?.[cat.slug];
+
+        if (typeof value === 'number' && !Number.isNaN(value)) {
+          categoryHistory[cat.slug][day] = value;
+        }
+      });
     });
 
-    const isAll = selectedSlug === 'all';
-    const activeCategory = categories.find(c => c.slug === selectedSlug);
-    const activeGoal = isAll ? 100 : goalMap[selectedSlug] || 1;
-    const activeCurrentAcc = isAll
-      ? summary.overallProgressPercentage
-      : currentAccumulatedMap[selectedSlug] || 0;
+    // Returns the latest known snapshot on or before the requested day.
+    const getSnapshotForDay = (slug: string, day: number): number => {
+      const history = categoryHistory[slug];
 
-    // Cumulative progression builder
+      if (!history) return 0;
+
+      const availableDays = Object.keys(history)
+        .map(Number)
+        .filter(d => d <= day)
+        .sort((a, b) => b - a);
+
+      if (availableDays.length === 0) return 0;
+
+      return history[availableDays[0]];
+    };
+
+    // Returns the average progress percentage across all categories.
+    const getOverallProgressForDay = (day: number): number => {
+      if (categories.length === 0) return 0;
+
+      const percentages = categories.map(cat => {
+        const goal = goalMap[cat.slug] || 0;
+        const value = getSnapshotForDay(cat.slug, day);
+
+        if (goal <= 0) return 0;
+
+        return (value / goal) * 100;
+      });
+
+      return percentages.reduce((sum, value) => sum + value, 0) / percentages.length;
+    };
+
+    // Current snapshot for the selected category
+    const getCurrentValue = (): number => {
+      if (isAll) {
+        return getOverallProgressForDay(currentDay);
+      }
+
+      return getSnapshotForDay(selectedSlug, currentDay);
+    };
+
+    const activeCurrentAcc = getCurrentValue();
+
     for (let day = 1; day <= daysInMonth; day++) {
       const isPastOrToday = day <= currentDay;
-      const progressFraction = Math.min(1, day / daysInMonth);
 
-      // Ideal pace trajectory (linear benchmark to target)
-      const idealPace = Number((activeGoal * progressFraction).toFixed(1));
+      // Ideal linear pace toward the monthly goal
+      const progressFraction = Math.min(1, day / daysInMonth);
+      const idealPace = Number(
+        (activeGoal * progressFraction).toFixed(1)
+      );
 
       let actual: number | null = null;
       let projected: number | null = null;
 
       if (isPastOrToday) {
-        // Build an organic, realistic cumulative curve arriving at activeCurrentAcc on currentDay
-        // Smooth progression curve with natural day-by-day variation
-        const dayFraction = currentDay > 0 ? day / currentDay : 1;
-        // Mild S-curve / organic ramp up
-        const curveWeight = Math.pow(dayFraction, 0.95);
-        actual = Number((activeCurrentAcc * curveWeight).toFixed(1));
+        /*
+         * HISTORICAL DATA:
+         * Use the real snapshot recorded for that day.
+         *
+         * If there was no entry on a particular day,
+         * carry forward the latest known snapshot.
+         */
+        actual = Number(
+          (
+            isAll
+              ? getOverallProgressForDay(day)
+              : getSnapshotForDay(selectedSlug, day)
+          ).toFixed(1)
+        );
       } else {
-        // Project forward from current rate to the end of the month
-        const dailyRunRate = currentDay > 0 ? activeCurrentAcc / currentDay : 0;
+        /*
+         * FUTURE:
+         * Project using the current snapshot and the current
+         * average pace, without altering historical values.
+         */
+        const dailyRunRate =
+          currentDay > 0 ? activeCurrentAcc / currentDay : 0;
+
         const daysFromCurrent = day - currentDay;
-        const projectedVal = activeCurrentAcc + dailyRunRate * daysFromCurrent;
-        projected = Number(projectedVal.toFixed(1));
+
+        projected = Number(
+          (activeCurrentAcc + dailyRunRate * daysFromCurrent).toFixed(1)
+        );
       }
 
       dataPoints.push({
         day: `Dia ${day}`,
         dayNum: day,
         ideal: idealPace,
-        actual: actual,
-        projected: projected,
-        // Combined line for seamless visual transition
+        actual,
+        projected,
         combinedValue: isPastOrToday ? actual : projected,
         isPastOrToday,
       });
@@ -157,6 +252,7 @@ export const EvolutionChart: React.FC<EvolutionChartProps> = ({
     selectedSlug,
     categories,
     goals,
+    entries,
     seller.id,
     currentYear,
     currentMonth,

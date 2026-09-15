@@ -184,13 +184,17 @@ export const ResultUpdateModal: React.FC<ResultUpdateModalProps> = ({
       validDate = `${currentYear}-${monthStr}-${String(Math.min(daysInMonth, 24)).padStart(2, '0')}`;
     }
 
-    const newUpdate: DailyEntry = {
-      id: `result-${activeSellerId}-${validDate}-${Date.now()}`,
-      sellerId: activeSellerId,
+    const existingEntry = existingEntries.find(
+  e => e.sellerId === activeSellerId && e.date === validDate
+);
+
+const newUpdate: DailyEntry = {
+  id: existingEntry?.id,
+  sellerId: activeSellerId,
       date: validDate,
       values: parsedValues,
       note: note.trim() || `Resultado consolidado de ${currentSellerObj.name} em ${validDate}`,
-      updatedBy: currentSellerObj.name,
+      updatedBy: currentSellerObj.id,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

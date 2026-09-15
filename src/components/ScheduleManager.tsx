@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { User, WorkSchedule, ScheduleStatus, WorkShift, WORK_SHIFTS } from '../types';
 import { calculateScheduleStats } from '../utils/calculations';
 import { WorkingDaysCounter } from './WorkingDaysCounter';
@@ -112,7 +112,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     const updatedList = schedules.filter(s => !(s.sellerId === selectedSellerId && s.date === dateStr));
 
     const newScheduleItem: WorkSchedule = {
-      id: existing ? existing.id : `schedule-${selectedSellerId}-${dateStr}`,
+      id: existing?.id || crypto.randomUUID(),
       sellerId: selectedSellerId,
       date: dateStr,
       status: modalStatus,
@@ -162,7 +162,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     }
 
     const newScheduleItem: WorkSchedule = {
-      id: existing ? existing.id : `schedule-${selectedSellerId}-${dateStr}`,
+      id: existing?.id || crypto.randomUUID(),
       sellerId: selectedSellerId,
       date: dateStr,
       status,
@@ -232,7 +232,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
       }
 
       updatedList.push({
-        id: `schedule-${selectedSellerId}-${dateStr}`,
+        id: crypto.randomUUID(),
         sellerId: selectedSellerId,
         date: dateStr,
         status,
@@ -302,29 +302,29 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                 <Calendar className="w-5 h-5" />
               </div>
               <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-                Escala e Gestão de Turnos
+                Escala e GestÃ£o de Turnos
               </h2>
               {/* Permission Badge */}
               {isEditingSelf ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  Sua Escala Pessoal (Pode Editar Seus Horários)
+                  Sua Escala Pessoal (Pode Editar Seus HorÃ¡rios)
                 </span>
               ) : canEdit ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-[#0071e3] border border-blue-200">
                   <Edit3 className="w-3 h-3" />
-                  Modo Gestão (A editar escala de {selectedSeller?.name})
+                  Modo GestÃ£o (A editar escala de {selectedSeller?.name})
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
                   <Eye className="w-3 h-3 text-slate-400" />
-                  Modo Visualização
+                  Modo VisualizaÃ§Ã£o
                 </span>
               )}
             </div>
             <p className="text-xs text-slate-500 mt-1 font-normal">
               {canEdit
-                ? 'Pode editar e personalizar os seus horários de trabalho, além de acompanhar as miniaturas dos colegas escalados no mesmo turno.'
+                ? 'Pode editar e personalizar os seus horÃ¡rios de trabalho, alÃ©m de acompanhar as miniaturas dos colegas escalados no mesmo turno.'
                 : 'Acompanhe a sua escala e visualize as miniaturas com foto dos colegas em cada turno de trabalho.'}
             </p>
           </div>
@@ -342,7 +342,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
-                Calendário Mensal
+                CalendÃ¡rio Mensal
               </button>
               <button
                 type="button"
@@ -353,7 +353,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
-                Quadro Diário da Equipa
+                Quadro DiÃ¡rio da Equipa
               </button>
             </div>
 
@@ -363,7 +363,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                 type="button"
                 onClick={() => setSelectedSellerId(currentUser.id)}
                 className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition shadow-2xs cursor-pointer"
-                title="Voltar para a minha escala pessoal onde posso editar os meus horários"
+                title="Voltar para a minha escala pessoal onde posso editar os meus horÃ¡rios"
               >
                 <img
                   src={currentUser.avatar}
@@ -381,7 +381,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                 className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-2xl border border-black/[0.08] bg-[#f5f5f7] text-slate-700 hover:bg-black/[0.05] transition shadow-2xs cursor-pointer"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
-                Preenchimento Rápido
+                Preenchimento RÃ¡pido
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showBatchTools ? 'rotate-180' : ''}`} />
               </button>
             )}
@@ -395,7 +395,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
               >
                 {sellers.map(seller => (
                   <option key={seller.id} value={seller.id}>
-                    {seller.name} {currentUser && seller.id === currentUser.id ? '(Você)' : ''}
+                    {seller.name} {currentUser && seller.id === currentUser.id ? '(VocÃª)' : ''}
                   </option>
                 ))}
               </select>
@@ -410,10 +410,10 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[#0071e3]" />
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Preenchimento Automático para {selectedSeller?.name} {isEditingSelf ? '(Seus Horários)' : ''}
+                  Preenchimento AutomÃ¡tico para {selectedSeller?.name} {isEditingSelf ? '(Seus HorÃ¡rios)' : ''}
                 </h4>
               </div>
-              <span className="text-[11px] text-slate-400">Aplica um padrão a todos os dias deste mês</span>
+              <span className="text-[11px] text-slate-400">Aplica um padrÃ£o a todos os dias deste mÃªs</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
               <button
@@ -466,11 +466,11 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-bold text-amber-950">Turno de Abertura</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/80 text-amber-900">
-                  09:30 às 18:30
+                  09:30 Ã s 18:30
                 </span>
               </div>
               <span className="text-xs text-amber-800 font-medium mt-0.5 block">
-                {scheduleStats.totalAberturaDays} dias no mês ({scheduleStats.remainingAberturaDays} restantes)
+                {scheduleStats.totalAberturaDays} dias no mÃªs ({scheduleStats.remainingAberturaDays} restantes)
               </span>
             </div>
           </div>
@@ -484,11 +484,11 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-bold text-indigo-950">Turno de Fecho</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-200/80 text-indigo-900">
-                  11:30 às 20:30
+                  11:30 Ã s 20:30
                 </span>
               </div>
               <span className="text-xs text-indigo-800 font-medium mt-0.5 block">
-                {scheduleStats.totalFechoDays} dias no mês ({scheduleStats.remainingFechoDays} restantes)
+                {scheduleStats.totalFechoDays} dias no mÃªs ({scheduleStats.remainingFechoDays} restantes)
               </span>
             </div>
           </div>
@@ -517,7 +517,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             <Info className="w-4 h-4 text-[#0071e3] shrink-0" />
             <span>
-              <strong>Equipa no mesmo turno:</strong> Miniaturas dos colegas escalados no mesmo horário. Os <strong>dias que já se passaram</strong> são destacados com borda verde e ícone de verificação centralizado em primeiro plano.
+              <strong>Equipa no mesmo turno:</strong> Miniaturas dos colegas escalados no mesmo horÃ¡rio. Os <strong>dias que jÃ¡ se passaram</strong> sÃ£o destacados com borda verde e Ã­cone de verificaÃ§Ã£o centralizado em primeiro plano.
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -526,7 +526,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
             </span>
             {canEdit && (
               <span className="text-[11px] font-bold text-[#0071e3]">
-                Edição Ativa
+                EdiÃ§Ã£o Ativa
               </span>
             )}
           </div>
@@ -607,18 +607,18 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                       : 'bg-white'
                   } shadow-2xs hover:shadow-xs`}
                 >
-                  {/* Ícone centralizado em primeiro plano com check para dias que já se passaram */}
+                  {/* Ãcone centralizado em primeiro plano com check para dias que jÃ¡ se passaram */}
                   {isPastDay && (
                     <div
                       className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
-                      aria-label={`Dia ${day} já decorrido`}
+                      aria-label={`Dia ${day} jÃ¡ decorrido`}
                     >
                       <div className="flex flex-col items-center justify-center drop-shadow-sm">
                         <div className="w-11 h-11 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/35 border-2 border-white ring-2 ring-emerald-500/20">
                           <Check className="w-6 h-6 stroke-[3.5]" />
                         </div>
                         <span className="mt-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase bg-white/95 text-emerald-800 border border-emerald-300 shadow-2xs backdrop-blur-xs">
-                          Concluído
+                          ConcluÃ­do
                         </span>
                       </div>
                     </div>
@@ -654,7 +654,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                             handleOpenEditModal(day);
                           }}
                           className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-black/[0.04] transition cursor-pointer"
-                          title="Editar horário e ver detalhes da equipa neste dia"
+                          title="Editar horÃ¡rio e ver detalhes da equipa neste dia"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
@@ -771,7 +771,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                             </div>
                           ) : (
                             <p className="text-[10px] text-slate-400 py-1 italic">
-                              Apenas você neste turno
+                              Apenas vocÃª neste turno
                             </p>
                           )}
                         </div>
@@ -781,7 +781,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                           <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
                             <span className="font-semibold flex items-center gap-1 text-slate-600">
                               <Users className="w-3 h-3 text-slate-400" />
-                              Equipa de Serviço:
+                              Equipa de ServiÃ§o:
                             </span>
                             <span className="text-[10px] text-slate-400 tabular-nums">
                               {teamInService.length} a trabalhar
@@ -846,7 +846,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                             ? 'bg-amber-500 text-white'
                             : 'text-slate-400 hover:text-amber-800 hover:bg-amber-50'
                         }`}
-                        title="Definir Abertura (09:30 às 18:30)"
+                        title="Definir Abertura (09:30 Ã s 18:30)"
                       >
                         Abertura
                       </button>
@@ -859,7 +859,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                             ? 'bg-indigo-600 text-white'
                             : 'text-slate-400 hover:text-indigo-800 hover:bg-indigo-50'
                         }`}
-                        title="Definir Fecho (11:30 às 20:30)"
+                        title="Definir Fecho (11:30 Ã s 20:30)"
                       >
                         Fecho
                       </button>
@@ -881,7 +881,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                         type="button"
                         onClick={() => handleOpenEditModal(day)}
                         className="p-1 rounded text-[#0071e3] hover:bg-blue-50 transition cursor-pointer"
-                        title="Personalizar horários específicos ou ver equipa"
+                        title="Personalizar horÃ¡rios especÃ­ficos ou ver equipa"
                       >
                         <Clock className="w-3 h-3" />
                       </button>
@@ -899,7 +899,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
             {/* Day Selector Pill Strip */}
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">
-                Selecione o Dia do Mês ({capitalizedMonth} de {currentYear}):
+                Selecione o Dia do MÃªs ({capitalizedMonth} de {currentYear}):
               </label>
               <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-thin">
                 {daysArray.map(day => {
@@ -983,12 +983,12 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                         {isRosterPastDay && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
                             <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
-                            Dia Concluído
+                            Dia ConcluÃ­do
                           </span>
                         )}
                       </div>
                       <p className="text-xs text-slate-500 font-normal">
-                        Distribuição da equipa pelos turnos de serviço e dias de folga.
+                        DistribuiÃ§Ã£o da equipa pelos turnos de serviÃ§o e dias de folga.
                       </p>
                     </div>
 
@@ -1000,7 +1000,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0071e3] text-xs font-bold text-white hover:bg-[#0077ed] transition shadow-2xs cursor-pointer"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
-                          Editar Meu Horário Neste Dia
+                          Editar Meu HorÃ¡rio Neste Dia
                         </button>
                       )}
                     </div>
@@ -1016,7 +1016,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                           </div>
                           <div>
                             <h4 className="text-sm font-bold text-amber-950">Turno de Abertura</h4>
-                            <span className="text-[11px] font-semibold text-amber-800">09:30 às 18:30</span>
+                            <span className="text-[11px] font-semibold text-amber-800">09:30 Ã s 18:30</span>
                           </div>
                         </div>
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-200 text-amber-900 tabular-nums">
@@ -1053,7 +1053,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                                       <span className="text-xs font-bold text-slate-900">{m.seller.name}</span>
                                       {isSelected && (
                                         <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#0071e3]/10 text-[#0071e3]">
-                                          Você
+                                          VocÃª
                                         </span>
                                       )}
                                     </div>
@@ -1093,7 +1093,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                           </div>
                           <div>
                             <h4 className="text-sm font-bold text-indigo-950">Turno de Fecho</h4>
-                            <span className="text-[11px] font-semibold text-indigo-800">11:30 às 20:30</span>
+                            <span className="text-[11px] font-semibold text-indigo-800">11:30 Ã s 20:30</span>
                           </div>
                         </div>
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-indigo-200 text-indigo-900 tabular-nums">
@@ -1130,7 +1130,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                                       <span className="text-xs font-bold text-slate-900">{m.seller.name}</span>
                                       {isSelected && (
                                         <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#0071e3]/10 text-[#0071e3]">
-                                          Você
+                                          VocÃª
                                         </span>
                                       )}
                                     </div>
@@ -1207,7 +1207,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                                       <span className="text-xs font-bold text-slate-700">{m.seller.name}</span>
                                       {isSelected && (
                                         <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-200 text-slate-800">
-                                          Você
+                                          VocÃª
                                         </span>
                                       )}
                                     </div>
@@ -1257,10 +1257,10 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 tracking-tight">
-                    Editar Horário & Escala &bull; Dia {editingDay} de {capitalizedMonth}
+                    Editar HorÃ¡rio & Escala &bull; Dia {editingDay} de {capitalizedMonth}
                   </h3>
                   <p className="text-xs text-slate-500 font-normal">
-                    Colaborador: <strong>{selectedSeller?.name}</strong> {isEditingSelf ? '(Você)' : ''}
+                    Colaborador: <strong>{selectedSeller?.name}</strong> {isEditingSelf ? '(VocÃª)' : ''}
                   </p>
                 </div>
               </div>
@@ -1335,7 +1335,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                             Abertura
                           </div>
                           <span className="text-[11px] text-amber-800 font-medium block mt-1">
-                            09:30 às 18:30
+                            09:30 Ã s 18:30
                           </span>
                         </button>
 
@@ -1357,7 +1357,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                             Fecho
                           </div>
                           <span className="text-[11px] text-indigo-800 font-medium block mt-1">
-                            11:30 às 20:30
+                            11:30 Ã s 20:30
                           </span>
                         </button>
 
@@ -1385,7 +1385,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                     <div className="grid grid-cols-2 gap-3 bg-[#f5f5f7] p-3.5 rounded-2xl border border-black/[0.04]">
                       <div>
                         <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                          Hora de Início:
+                          Hora de InÃ­cio:
                         </label>
                         <input
                           type="time"
@@ -1396,7 +1396,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                       </div>
                       <div>
                         <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                          Hora de Término:
+                          Hora de TÃ©rmino:
                         </label>
                         <input
                           type="time"
@@ -1412,11 +1412,11 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                 {/* Optional Note */}
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                    Anotação / Justificação (opcional):
+                    AnotaÃ§Ã£o / JustificaÃ§Ã£o (opcional):
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: Troca autorizada com Carlos, horário reduzido..."
+                    placeholder="Ex: Troca autorizada com Carlos, horÃ¡rio reduzido..."
                     value={modalNote}
                     onChange={e => setModalNote(e.target.value)}
                     className="w-full bg-[#f5f5f7] border border-black/[0.08] rounded-2xl px-3.5 py-2.5 text-xs text-slate-800 focus:bg-white focus:border-[#0071e3] focus:outline-none"
@@ -1425,7 +1425,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
               </div>
             ) : (
               <div className="mt-4 p-4 rounded-2xl bg-amber-50 text-amber-900 text-xs">
-                Apenas o próprio colaborador ou gestores têm permissão para editar os horários desta escala.
+                Apenas o prÃ³prio colaborador ou gestores tÃªm permissÃ£o para editar os horÃ¡rios desta escala.
               </div>
             )}
 
@@ -1496,12 +1496,12 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                                 <span className="font-bold text-slate-800">{m.seller.name}</span>
                                 {isSelf && (
                                   <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#0071e3] text-white">
-                                    Você
+                                    VocÃª
                                   </span>
                                 )}
                                 {!isSelf && isSameShift && (
                                   <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800">
-                                    Mesmo Turno que Você
+                                    Mesmo Turno que VocÃª
                                   </span>
                                 )}
                               </div>
@@ -1551,7 +1551,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                   onClick={handleSaveModal}
                   className="px-5 py-2.5 rounded-2xl bg-[#0071e3] text-xs font-bold text-white hover:bg-[#0077ed] transition shadow-sm cursor-pointer"
                 >
-                  Guardar Horário
+                  Guardar HorÃ¡rio
                 </button>
               )}
             </div>
@@ -1561,3 +1561,4 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     </div>
   );
 };
+

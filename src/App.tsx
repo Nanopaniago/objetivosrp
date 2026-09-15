@@ -192,12 +192,10 @@ export default function App() {
 
   // Handle Login & Logout via authService
   const handleLogin = (user: User) => {
-    authService.setSessionUserId(user.id);
-    authService.setCurrentUserId(user.id);
-    setAuthenticatedUserId(user.id);
-    setCurrentUserId(user.id);
-  };
-
+  authService.setCurrentUserId(user.id);
+  setAuthenticatedUserId(user.id);
+  setCurrentUserId(user.id);
+};
   const handleLogout = async () => {
     await authService.logout();
     setAuthenticatedUserId(null);
@@ -366,11 +364,9 @@ export default function App() {
         brand={brand}
         onOpenBrandCustomizer={isSuperAdmin ? () => setIsBrandCustomizerOpen(true) : undefined}
         onSwitchUser={(newId) => {
-          setCurrentUserId(newId);
-          setAuthenticatedUserId(newId);
-          authService.setSessionUserId(newId);
-          authService.setCurrentUserId(newId);
-        }}
+  setCurrentUserId(newId);
+  authService.setCurrentUserId(newId);
+}}
         currentMonth={currentMonth}
         currentYear={currentYear}
         onChangeMonth={(m, y) => {
