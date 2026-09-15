@@ -1,4 +1,4 @@
-import {
+﻿import {
   User,
   UserRole,
   GoalCategory,
@@ -307,8 +307,8 @@ export function dailyEntryToResultRow(entry: DailyEntry): DailyResultInsert {
     updated_by: entry.updatedBy || null,
   };
 
-  // Mantém o UUID quando o lançamento já existe.
-  // Para novos lançamentos, o PostgreSQL gera o UUID automaticamente.
+  // MantÃ©m o UUID quando o lanÃ§amento jÃ¡ existe.
+  // Para novos lanÃ§amentos, o PostgreSQL gera o UUID automaticamente.
   if (entry.id) {
     row.id = entry.id;
   }
@@ -360,7 +360,7 @@ export function storeSettingRowToBrandConfig(row: StoreSettingRow): BrandConfig 
   return {
     name: val.name || 'SalesFlow',
     highlightWord: val.highlightWord ?? 'Flow',
-    tagline: val.tagline || 'Gestão de Metas & Desempenho Comercial',
+    tagline: val.tagline || 'GestÃ£o de Metas & Desempenho Comercial',
     logoType: val.logoType || 'preset',
     logoPreset: val.logoPreset || 'leaf',
     customLogoUrl: val.customLogoUrl,
@@ -370,8 +370,8 @@ export function storeSettingRowToBrandConfig(row: StoreSettingRow): BrandConfig 
 
 export function brandConfigToStoreSettingRow(config: BrandConfig): StoreSettingInsert {
   return {
-    id: 'brand_config',
     key: 'brand_config',
     value: config as unknown as Record<string, unknown>,
   };
 }
+
