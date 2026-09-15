@@ -25,6 +25,18 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
+const generateUuid = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 interface ScheduleManagerProps {
   sellers: User[];
   currentMonth: number;
@@ -112,7 +124,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     const updatedList = schedules.filter(s => !(s.sellerId === selectedSellerId && s.date === dateStr));
 
     const newScheduleItem: WorkSchedule = {
-      id: existing?.id || crypto.randomUUID(),
+      id: existing?.id || generateUuid(),
       sellerId: selectedSellerId,
       date: dateStr,
       status: modalStatus,
@@ -162,7 +174,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     }
 
     const newScheduleItem: WorkSchedule = {
-      id: existing?.id || crypto.randomUUID(),
+      id: existing?.id || generateUuid(),
       sellerId: selectedSellerId,
       date: dateStr,
       status,
@@ -232,7 +244,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
       }
 
       updatedList.push({
-        id: crypto.randomUUID(),
+        id: generateUuid(),
         sellerId: selectedSellerId,
         date: dateStr,
         status,
@@ -1561,4 +1573,6 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     </div>
   );
 };
+
+
 
