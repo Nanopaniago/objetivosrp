@@ -358,7 +358,7 @@ export function categoryRowToGoalCategory(row: GoalCategoryRow): GoalCategory {
 export function storeSettingRowToBrandConfig(row: StoreSettingRow): BrandConfig {
   const val = (row.value || {}) as unknown as Partial<BrandConfig>;
   return {
-    name: val.name || 'SalesFlow',
+    name: val.name || 'Objetivos RP',
     highlightWord: val.highlightWord ?? 'Flow',
     tagline: val.tagline || 'GestÃ£o de Metas & Desempenho Comercial',
     logoType: val.logoType || 'preset',

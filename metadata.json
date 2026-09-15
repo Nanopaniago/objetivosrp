@@ -1,5 +1,5 @@
 {
-  "name": "SalesFlow",
+  "name": "Objetivos RP",
   "description": "Plataforma de acompanhamento do desempenho de vendas e metas para equipas comerciais",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

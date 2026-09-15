@@ -75,7 +75,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
 
   // Split name to highlight the second part if applicable
   const renderFormattedName = () => {
-    const rawName = brand.name || 'SalesFlow';
+    const rawName = brand.name || 'Objetivos RP';
     const highlight = brand.highlightWord?.trim();
 
     if (highlight && rawName.toLowerCase().includes(highlight.toLowerCase())) {

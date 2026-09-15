@@ -1,7 +1,7 @@
 import { BrandConfig, BrandAccent } from '../types';
 
 export const DEFAULT_BRAND_CONFIG: BrandConfig = {
-  name: 'SalesFlow',
+  name: 'Objetivos RP',
   highlightWord: 'Flow',
   tagline: 'Plataforma de Gestão de Metas & Desempenho Comercial',
   logoType: 'preset',

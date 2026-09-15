@@ -334,7 +334,7 @@ export const BrandCustomizerModal: React.FC<BrandCustomizerModalProps> = ({
                 required
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                placeholder="ex: SalesFlow ou Porto de Mós"
+                placeholder="ex: Objetivos RP ou Porto de Mós"
                 className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 focus:border-[#0071e3] focus:ring-2 focus:ring-blue-100 focus:outline-none transition bg-white"
               />
             </div>

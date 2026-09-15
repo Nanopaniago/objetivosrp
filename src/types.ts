@@ -151,7 +151,7 @@ export type BrandAccent = 'graphite' | 'apple_blue' | 'indigo' | 'emerald' | 'am
 export type LogoPreset = 'leaf' | 'sparkle' | 'pulse' | 'wave' | 'gem' | 'target' | 'flow';
 
 export interface BrandConfig {
-  name: string; // e.g. "SalesFlow"
+  name: string; // e.g. "Objetivos RP"
   highlightWord?: string; // e.g. "Flow"
   tagline: string; // e.g. "Gestão de Metas & Alta Performance"
   logoType: 'preset' | 'custom_image';
