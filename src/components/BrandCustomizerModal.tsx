@@ -33,12 +33,13 @@ interface BrandCustomizerModalProps {
 }
 
 const PRESET_OPTIONS: { id: LogoPreset; label: string; icon: React.ReactNode; desc: string }[] = [
-  { id: 'leaf', label: 'Folha Orgânica', icon: <Leaf className="w-5 h-5" />, desc: 'A estética pura e orgânica da Apple' },
+  { id: 'rp_glow', label: 'Objetivos RP (Oficial)', icon: <Target className="w-5 h-5 text-blue-500" />, desc: 'Emblema oficial neon azul com mira e monograma RP' },
+  { id: 'target', label: 'Foco no Alvo', icon: <Target className="w-5 h-5" />, desc: 'Orientação clara para metas' },
   { id: 'sparkle', label: 'Centelha / Brilho', icon: <Sparkles className="w-5 h-5" />, desc: 'Destaque e excelência comercial' },
   { id: 'pulse', label: 'Pulso & Ritmo', icon: <Activity className="w-5 h-5" />, desc: 'Dinâmica de vendas em tempo real' },
   { id: 'wave', label: 'Onda Suave', icon: <Waves className="w-5 h-5" />, desc: 'Fluidez e harmonia de equipa' },
   { id: 'gem', label: 'Cristal Geométrico', icon: <Diamond className="w-5 h-5" />, desc: 'Precisão e solidez de resultados' },
-  { id: 'target', label: 'Foco no Alvo', icon: <Target className="w-5 h-5" />, desc: 'Orientação clara para metas' },
+  { id: 'leaf', label: 'Folha Orgânica', icon: <Leaf className="w-5 h-5" />, desc: 'A estética pura e orgânica da Apple' },
   { id: 'flow', label: 'Camadas / Flow', icon: <Layers className="w-5 h-5" />, desc: 'Estrutura organizada e moderna' },
 ];
 

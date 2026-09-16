@@ -12,10 +12,11 @@ import {
 } from 'lucide-react';
 import { User, BrandConfig } from '../types';
 import { getAccentClasses } from '../utils/brand';
+import { AppTab } from './Sidebar';
 
 interface MobileBottomNavProps {
-  activeTab: 'dashboard' | 'team' | 'goals' | 'schedule' | 'users';
-  onSelectTab: (tab: 'dashboard' | 'team' | 'goals' | 'schedule' | 'users') => void;
+  activeTab: AppTab;
+  onSelectTab: (tab: AppTab) => void;
   onOpenDailyEntry: () => void;
   currentUser: User;
   brand: BrandConfig;

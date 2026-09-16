@@ -39,6 +39,29 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
 
   const renderIcon = (preset: LogoPreset) => {
     switch (preset) {
+      case 'rp_glow':
+        return (
+          <svg viewBox="0 0 100 100" className={`${sizeDimensions.icon} overflow-visible`} fill="none">
+            <circle cx="50" cy="50" r="44" stroke="currentColor" strokeWidth="3" strokeOpacity="0.35" strokeDasharray="5 4" />
+            <circle cx="50" cy="50" r="28" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.4" />
+            <line x1="50" y1="10" x2="50" y2="20" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            <line x1="50" y1="80" x2="50" y2="90" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            <line x1="10" y1="50" x2="20" y2="50" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            <line x1="80" y1="50" x2="90" y2="50" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            {/* Bold R */}
+            <path
+              d="M30 30h15c7.5 0 11.5 3.5 11.5 9s-4 9-11.5 9h-8v19h-7V30zm7 13h7c3.5 0 5.5-1.5 5.5-4s-2-4-5.5-4h-7v8z"
+              fill="currentColor"
+            />
+            {/* Leg of R and P overlap */}
+            <path
+              d="M45 48l13 19h8.5L54.5 48.5C59 47.5 62 44 62 39c0-6-5-9-12-9h-2v5h2c4.5 0 6.5 1.8 6.5 4.5S54.5 44 50 44h-5v4z"
+              fill="#ffffff"
+            />
+            {/* Bullseye center */}
+            <circle cx="50" cy="50" r="3.5" fill="#38bdf8" />
+          </svg>
+        );
       case 'leaf':
         return <Leaf className={sizeDimensions.icon} strokeWidth={2.2} />;
       case 'sparkle':
@@ -53,7 +76,21 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
         return <Target className={sizeDimensions.icon} strokeWidth={2.2} />;
       case 'flow':
       default:
-        return <Layers className={sizeDimensions.icon} strokeWidth={2.2} />;
+        return (
+          <svg viewBox="0 0 100 100" className={`${sizeDimensions.icon} overflow-visible`} fill="none">
+            <circle cx="50" cy="50" r="44" stroke="currentColor" strokeWidth="3" strokeOpacity="0.35" strokeDasharray="5 4" />
+            <circle cx="50" cy="50" r="28" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.4" />
+            <path
+              d="M30 30h15c7.5 0 11.5 3.5 11.5 9s-4 9-11.5 9h-8v19h-7V30zm7 13h7c3.5 0 5.5-1.5 5.5-4s-2-4-5.5-4h-7v8z"
+              fill="currentColor"
+            />
+            <path
+              d="M45 48l13 19h8.5L54.5 48.5C59 47.5 62 44 62 39c0-6-5-9-12-9h-2v5h2c4.5 0 6.5 1.8 6.5 4.5S54.5 44 50 44h-5v4z"
+              fill="#ffffff"
+            />
+            <circle cx="50" cy="50" r="3.5" fill="#38bdf8" />
+          </svg>
+        );
     }
   };
 
@@ -75,8 +112,9 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
 
   // Split name to highlight the second part if applicable
   const renderFormattedName = () => {
-    const rawName = brand.name || 'Objetivos RP';
-    const highlight = brand.highlightWord?.trim();
+    let rawName = brand.name || 'Objetivos RP';
+    if (rawName === 'SalesFlow') rawName = 'Objetivos RP';
+    const highlight = brand.highlightWord?.trim() || (rawName === 'Objetivos RP' ? 'RP' : undefined);
 
     if (highlight && rawName.toLowerCase().includes(highlight.toLowerCase())) {
       const idx = rawName.toLowerCase().indexOf(highlight.toLowerCase());

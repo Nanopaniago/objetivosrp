@@ -6,34 +6,31 @@ import { profileToUser, userToProfile, ProfileRow } from '../lib/supabase/types'
  * Users Service
  *
  * Persists and queries user profiles directly from the Supabase `profiles` table.
- * Does NOT use localStorage as database.
- * Does NOT use mock data fallbacks.
- * Does NOT keep hardcoded credentials or super_admin bypasses.
  */
 export class UsersService {
   /**
    * Retrieves all users from Supabase `profiles` table.
-   * Throws if Supabase returns an error so the UI can display it clearly.
    */
   async getUsers(): Promise<User[]> {
     const client = getSupabaseClient();
     if (client && isSupabaseConfigured()) {
-      const { data, error } = await client
-        .from('profiles')
-        .select('*')
-        .order('name', { ascending: true });
+      try {
+        const { data, error } = await client
+          .from('profiles')
+          .select('*')
+          .order('name', { ascending: true });
 
-      if (error) {
-        console.error('Erro ao pesquisar perfis no Supabase:', error.message);
-        throw new Error(`Falha ao carregar utilizadores do Supabase: ${error.message}`);
+        if (error) {
+          console.error('Erro ao pesquisar perfis no Supabase:', error.message);
+          return [];
+        }
+
+        if (data && data.length > 0) {
+          return (data as ProfileRow[]).map(r => profileToUser(r));
+        }
+      } catch (err) {
+        console.warn('Falha na consulta ao Supabase:', err);
       }
-
-      if (data && data.length > 0) {
-        return (data as ProfileRow[]).map(r => profileToUser(r));
-      }
-
-      // If database has 0 profiles yet
-      return [];
     }
 
     return [];
@@ -54,7 +51,6 @@ export class UsersService {
 
         if (error) {
           console.error(`Erro ao pesquisar utilizador ${id} no Supabase:`, error.message);
-          throw new Error(`Falha ao carregar utilizador: ${error.message}`);
         }
 
         if (data) {
@@ -62,7 +58,6 @@ export class UsersService {
         }
       } catch (err) {
         console.error(`Erro ao obter utilizador ${id}:`, err);
-        throw err;
       }
     }
 

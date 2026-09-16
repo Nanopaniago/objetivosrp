@@ -117,6 +117,8 @@ export interface CategoryCalculation {
   lastUpdatedDate?: string;
 }
 
+export type CategoryPerformanceCalculation = CategoryCalculation;
+
 export interface ScheduleCalculation {
   totalMonthDays: number;
   totalMonthWorkDays: number;
@@ -148,11 +150,13 @@ export interface SellerPerformanceSummary {
 
 export type BrandAccent = 'graphite' | 'apple_blue' | 'indigo' | 'emerald' | 'amber';
 
-export type LogoPreset = 'leaf' | 'sparkle' | 'pulse' | 'wave' | 'gem' | 'target' | 'flow';
+export type LogoPreset = 'rp_glow' | 'target' | 'leaf' | 'sparkle' | 'pulse' | 'wave' | 'gem' | 'flow';
+
+export type AppTheme = 'dark' | 'light';
 
 export interface BrandConfig {
   name: string; // e.g. "Objetivos RP"
-  highlightWord?: string; // e.g. "Flow"
+  highlightWord?: string; // e.g. "RP"
   tagline: string; // e.g. "Gestão de Metas & Alta Performance"
   logoType: 'preset' | 'custom_image';
   logoPreset: LogoPreset;

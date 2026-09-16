@@ -2,10 +2,10 @@ import { BrandConfig, BrandAccent } from '../types';
 
 export const DEFAULT_BRAND_CONFIG: BrandConfig = {
   name: 'Objetivos RP',
-  highlightWord: 'Flow',
-  tagline: 'Plataforma de Gestão de Metas & Desempenho Comercial',
+  highlightWord: 'RP',
+  tagline: 'Gestão Inteligente de Metas & Performance',
   logoType: 'preset',
-  logoPreset: 'leaf',
+  logoPreset: 'rp_glow',
   accent: 'apple_blue',
 };
 

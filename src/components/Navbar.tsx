@@ -14,8 +14,11 @@ import {
   Palette,
   Sparkles,
   ChevronDown,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { getAccentClasses } from '../utils/brand';
+import { useTheme } from '../context/ThemeContext';
 
 interface NavbarProps {
   currentUser: User;
@@ -48,6 +51,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenProfile,
   onLogout,
 }) => {
+  const { isDark, toggleTheme } = useTheme();
+
   const months = [
     { num: 1, name: 'Janeiro' },
     { num: 2, name: 'Fevereiro' },
@@ -81,16 +86,24 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isSuperAdmin = currentUser.role === 'super_admin';
 
   return (
-    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-2xl border-b border-black/[0.05] shadow-[0_2px_16px_rgba(0,0,0,0.02)] transition-all">
+    <header
+      className={`sticky top-0 z-40 backdrop-blur-2xl border-b transition-all ${
+        isDark
+          ? 'bg-[#070d19]/90 border-white/[0.08] text-white shadow-[0_4px_24px_rgba(0,0,0,0.5)]'
+          : 'bg-white/85 border-black/[0.05] text-slate-900 shadow-[0_2px_16px_rgba(0,0,0,0.02)]'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Top bar: Brand + Controls & Profile */}
         <div className="flex items-center justify-between h-16 gap-4">
-          {/* Logo & Brand Name (Only clickable to customize if Super Admin) */}
+          {/* Logo & Brand Name */}
           <div
             onClick={isSuperAdmin ? onOpenBrandCustomizer : undefined}
             className={`flex items-center gap-2 py-1.5 px-2 -ml-2 rounded-2xl transition duration-200 ${
               isSuperAdmin && onOpenBrandCustomizer
-                ? 'group cursor-pointer hover:bg-black/[0.03]'
+                ? isDark
+                  ? 'group cursor-pointer hover:bg-white/[0.05]'
+                  : 'group cursor-pointer hover:bg-black/[0.03]'
                 : 'cursor-default select-none'
             }`}
             title={
@@ -100,41 +113,83 @@ export const Navbar: React.FC<NavbarProps> = ({
             }
           >
             <BrandLogo brand={brand} size="md" showText={true} />
-            
+
             {/* Subtle customize indicator pill on hover - only for Super Admin */}
             {isSuperAdmin && onOpenBrandCustomizer && (
-              <span className="hidden xl:inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 group-hover:text-slate-800 bg-black/[0.03] group-hover:bg-white px-2 py-0.5 rounded-full border border-black/[0.04] transition ml-1">
-                <Palette className="w-3 h-3 text-slate-500 group-hover:text-slate-900" />
+              <span
+                className={`hidden xl:inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border transition ml-1 ${
+                  isDark
+                    ? 'text-slate-400 bg-white/[0.05] group-hover:bg-white/[0.1] border-white/[0.08]'
+                    : 'text-slate-400 group-hover:text-slate-800 bg-black/[0.03] group-hover:bg-white border-black/[0.04]'
+                }`}
+              >
+                <Palette className="w-3 h-3 text-sky-400" />
                 <span>Mudar Logo</span>
               </span>
             )}
           </div>
 
           {/* Controls Right */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Super Admin Brand Quick Button (mobile/tablet friendly) */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Theme Toggle: Clara / Escura */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                isDark
+                  ? 'bg-white/[0.05] hover:bg-white/[0.1] border-white/[0.1] text-amber-300'
+                  : 'bg-black/[0.03] hover:bg-black/[0.06] border-black/[0.06] text-slate-700'
+              }`}
+              title={isDark ? 'Mudar para Tema Claro' : 'Mudar para Tema Escuro'}
+            >
+              {isDark ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">Tema Claro</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-slate-600" />
+                  <span className="hidden sm:inline">Tema Escuro</span>
+                </>
+              )}
+            </button>
+
+            {/* Super Admin Brand Quick Button */}
             {isSuperAdmin && onOpenBrandCustomizer && (
               <button
                 type="button"
                 onClick={onOpenBrandCustomizer}
-                className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-black/[0.06] bg-white/70 hover:bg-white text-slate-700 hover:text-slate-900 text-xs font-semibold shadow-2xs hover:shadow-xs transition cursor-pointer"
+                className={`hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-2xs transition cursor-pointer ${
+                  isDark
+                    ? 'bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08] text-slate-200'
+                    : 'bg-white/70 border-black/[0.06] hover:bg-white text-slate-700'
+                }`}
                 title="Personalizar Logótipo, Nome e Cores da Plataforma (Exclusivo Super Usuário)"
               >
-                <Palette className="w-3.5 h-3.5 text-slate-600" />
-                <span>Marca & Logo</span>
+                <Palette className="w-3.5 h-3.5 text-sky-400" />
+                <span>Marca</span>
               </button>
             )}
 
-            {/* Month Picker - Apple Minimalist Style */}
-            <div className="relative flex items-center rounded-2xl border border-black/[0.06] bg-black/[0.03] hover:bg-black/[0.05] px-3 py-1.5 text-xs font-semibold text-slate-800 transition">
-              <Calendar className="w-3.5 h-3.5 mr-2 text-slate-600 shrink-0" />
+            {/* Month Picker */}
+            <div
+              className={`relative flex items-center rounded-2xl border px-3 py-1.5 text-xs font-semibold transition ${
+                isDark
+                  ? 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-white'
+                  : 'border-black/[0.06] bg-black/[0.03] hover:bg-black/[0.05] text-slate-800'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5 mr-2 text-sky-400 shrink-0" />
               <select
                 value={currentMonth}
                 onChange={e => onChangeMonth(Number(e.target.value), currentYear)}
-                className="bg-transparent font-semibold text-slate-900 focus:outline-none cursor-pointer pr-4 appearance-none"
+                className={`bg-transparent font-bold focus:outline-none cursor-pointer pr-4 appearance-none ${
+                  isDark ? 'text-white' : 'text-slate-900'
+                }`}
               >
                 {months.map(m => (
-                  <option key={m.num} value={m.num}>
+                  <option key={m.num} value={m.num} className={isDark ? 'bg-[#0b1222] text-white' : 'bg-white text-slate-900'}>
                     {m.name} {currentYear}
                   </option>
                 ))}
@@ -142,53 +197,64 @@ export const Navbar: React.FC<NavbarProps> = ({
               <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 pointer-events-none" />
             </div>
 
-            {/* Quick Result Update Action (Apple Pill) */}
+            {/* Quick Result Update Action */}
             <button
               id="btn-atualizar-resultado"
               onClick={onOpenDailyEntry}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold text-white shadow-[0_2px_8px_rgba(0,113,227,0.25)] hover:opacity-95 active:scale-95 transition cursor-pointer ${accentClasses.primary}`}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl text-xs font-bold text-white shadow-md hover:opacity-95 active:scale-95 transition cursor-pointer ${accentClasses.primary}`}
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Atualizar Resultado</span>
-              <span className="sm:hidden">Resultado</span>
+              <span className="sm:hidden">Atualizar</span>
             </button>
 
             {/* Logged in User Profile & Actions */}
-            <div className="flex items-center gap-2 pl-2 border-l border-black/[0.06]">
+            <div className={`flex items-center gap-2 pl-2 border-l ${isDark ? 'border-white/[0.08]' : 'border-black/[0.06]'}`}>
               <div
                 onClick={onOpenProfile}
-                className="flex items-center gap-2.5 px-2 py-1 rounded-2xl hover:bg-black/[0.04] transition cursor-pointer group"
-                title="Clique para editar as suas informações pessoais"
+                className={`flex items-center gap-2.5 px-2 py-1 rounded-2xl transition cursor-pointer group ${
+                  isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-black/[0.04]'
+                }`}
+                title="Ver e Editar o Meu Perfil"
               >
                 <div className="relative">
                   <img
                     src={currentUser.avatar}
                     alt={currentUser.name}
-                    className="w-8 h-8 rounded-full object-cover border border-black/[0.08] shadow-2xs group-hover:scale-105 transition duration-200"
+                    className="w-8 h-8 rounded-full object-cover border border-white/10"
                   />
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-white" />
                 </div>
-                <div className="hidden md:flex flex-col text-left">
-                  <span className="text-xs font-bold text-slate-900 leading-tight truncate max-w-[130px]">
+                <div className="hidden lg:block text-left">
+                  <span className={`text-xs font-black block leading-none ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {currentUser.name}
                   </span>
-                  <span className="text-[10px] font-medium text-slate-500 leading-tight">
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
                     {getRoleLabel(currentUser.role)}
                   </span>
                 </div>
               </div>
 
-              {/* Edit Profile Button */}
-              {onOpenProfile && (
-                <button
-                  type="button"
-                  onClick={onOpenProfile}
-                  className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-black/[0.06] bg-white hover:bg-slate-50 text-[11px] font-bold text-slate-700 transition shadow-2xs cursor-pointer"
-                  title="Editar as suas informações"
-                >
-                  <Edit className="w-3 h-3 text-slate-600" />
-                  <span>Perfil</span>
-                </button>
+              {/* Fast User Switcher for Admin/SuperAdmin/Manager testing */}
+              {onSwitchUser && allUsers.length > 1 && (
+                <div className="hidden xl:block">
+                  <select
+                    value={currentUser.id}
+                    onChange={e => onSwitchUser(e.target.value)}
+                    className={`rounded-xl border px-2 py-1 text-[11px] font-semibold focus:outline-none cursor-pointer ${
+                      isDark
+                        ? 'border-white/[0.08] bg-white/[0.03] text-slate-300'
+                        : 'border-black/[0.06] bg-black/[0.02] text-slate-700'
+                    }`}
+                    title="Alternar utilizador ativo"
+                  >
+                    {allUsers.map(u => (
+                      <option key={u.id} value={u.id} className={isDark ? 'bg-[#0b1222] text-white' : 'bg-white text-slate-900'}>
+                        {u.name} ({getRoleLabel(u.role)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
 
               {/* Logout Button */}
@@ -196,10 +262,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   type="button"
                   onClick={onLogout}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-rose-200/60 bg-rose-50/50 hover:bg-rose-100/70 text-rose-700 text-xs font-bold transition shadow-2xs cursor-pointer"
+                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                    isDark
+                      ? 'border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400'
+                      : 'border-rose-100 bg-rose-50/70 hover:bg-rose-100 text-rose-700'
+                  }`}
                   title="Terminar Sessão e voltar ao Ecrã de Login"
                 >
-                  <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                  <LogOut className="w-3.5 h-3.5 text-rose-500" />
                   <span className="hidden sm:inline">Sair</span>
                 </button>
               )}
@@ -207,14 +277,22 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Navigation Tabs - Apple macOS / iOS Segmented Control Bar (hidden on mobile, handled by native MobileBottomNav) */}
-        <div className="hidden sm:block py-2.5 border-t border-black/[0.04]">
-          <div className="inline-flex items-center p-1 bg-black/[0.04] rounded-2xl gap-1 overflow-x-auto max-w-full scrollbar-none">
+        {/* Navigation Tabs - Apple macOS / iOS Segmented Control Bar */}
+        <div className={`hidden sm:block py-2.5 border-t ${isDark ? 'border-white/[0.06]' : 'border-black/[0.04]'}`}>
+          <div
+            className={`inline-flex items-center p-1 rounded-2xl gap-1 overflow-x-auto max-w-full scrollbar-none ${
+              isDark ? 'bg-black/30' : 'bg-black/[0.04]'
+            }`}
+          >
             <button
               onClick={() => onSelectTab('dashboard')}
-              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 activeTab === 'dashboard'
-                  ? 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  ? isDark
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : isDark
+                  ? 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
               }`}
             >
@@ -224,9 +302,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={() => onSelectTab('team')}
-              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 activeTab === 'team'
-                  ? 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  ? isDark
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : isDark
+                  ? 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
               }`}
             >
@@ -236,9 +318,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={() => onSelectTab('schedule')}
-              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 activeTab === 'schedule'
-                  ? 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  ? isDark
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : isDark
+                  ? 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
               }`}
             >
@@ -248,9 +334,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={() => onSelectTab('goals')}
-              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 activeTab === 'goals'
-                  ? 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  ? isDark
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : isDark
+                  ? 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
               }`}
             >
@@ -260,9 +350,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={() => onSelectTab('users')}
-              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 activeTab === 'users'
-                  ? 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  ? isDark
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : isDark
+                  ? 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
               }`}
             >

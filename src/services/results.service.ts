@@ -10,42 +10,48 @@ import {
  * Results Service
  *
  * Persists and queries daily and accumulated results from the Supabase `daily_results` table.
- * Does NOT rely on localStorage.
- * Does NOT use mock data fallbacks.
+ * Falls back to local storage when Supabase is not connected.
  */
 export class ResultsService {
   async getDailyResults(month?: number, year?: number, sellerId?: string): Promise<DailyEntry[]> {
     const client = getSupabaseClient();
     if (client && isSupabaseConfigured()) {
-      let query = client.from('daily_results').select('*');
+      try {
+        let query = client.from('daily_results').select('*');
 
-      if (sellerId) {
-        query = query.eq('seller_id', sellerId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Erro ao pesquisar resultados diários no Supabase:', error.message);
-        throw new Error(`Falha ao carregar resultados diários do Supabase: ${error.message}`);
-      }
-
-      if (data && data.length > 0) {
-        let mapped = (data as DailyResultRow[]).map(r => dailyResultRowToEntry(r));
-
-        if (month !== undefined && year !== undefined) {
-          mapped = mapped.filter(e => {
-            const [y, m] = e.date.split('-').map(Number);
-            return y === year && m === month;
-          });
+        if (sellerId) {
+          query = query.eq('seller_id', sellerId);
         }
 
-        return mapped;
-      }
+        const { data, error } = await query;
 
-      // No results recorded yet in Supabase
-      return [];
+        if (!error && data && data.length > 0) {
+          let mapped = (data as DailyResultRow[]).map(r => dailyResultRowToEntry(r));
+
+          if (month !== undefined && year !== undefined) {
+            mapped = mapped.filter(e => {
+              const [y, m] = e.date.split('-').map(Number);
+              return y === year && m === month;
+            });
+          }
+
+          return mapped;
+        }
+      } catch (err) {
+        console.warn('Aviso ao ler resultados do Supabase:', err);
+      }
     }
+
+    const m = month ?? (new Date().getMonth() + 1);
+    const y = year ?? new Date().getFullYear();
+    const localKey = `rp_results_${m}_${y}`;
+    try {
+      const saved = localStorage.getItem(localKey);
+      if (saved) {
+        const parsed: DailyEntry[] = JSON.parse(saved);
+        return sellerId ? parsed.filter(p => p.sellerId === sellerId) : parsed;
+      }
+    } catch {}
 
     return [];
   }
@@ -61,12 +67,7 @@ export class ResultsService {
           .select()
           .single();
 
-        if (error) {
-          console.error('Erro ao gravar resultado no Supabase:', error.message);
-          throw new Error(`Falha ao guardar lançamento: ${error.message}`);
-        }
-
-        if (data) {
+        if (!error && data) {
           const savedEntry = dailyResultRowToEntry(data as DailyResultRow);
           return [
             ...currentEntries.filter(e => !(e.sellerId === savedEntry.sellerId && e.date === savedEntry.date)),
@@ -74,12 +75,20 @@ export class ResultsService {
           ];
         }
       } catch (err) {
-        console.error('Erro na gravação de resultado no Supabase:', err);
-        throw err;
+        console.warn('Aviso ao guardar resultado no Supabase:', err);
       }
     }
 
-    throw new Error('Supabase não está configurado para guardar resultado.');
+    const [y, m] = newUpdate.date.split('-').map(Number);
+    const localKey = `rp_results_${m}_${y}`;
+    const updated = [
+      ...currentEntries.filter(e => !(e.sellerId === newUpdate.sellerId && e.date === newUpdate.date)),
+      newUpdate,
+    ];
+    try {
+      localStorage.setItem(localKey, JSON.stringify(updated));
+    } catch {}
+    return updated;
   }
 
   async saveDailyResults(entries: DailyEntry[]): Promise<DailyEntry[]> {

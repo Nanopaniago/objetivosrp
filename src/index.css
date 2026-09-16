@@ -27,3 +27,172 @@
     background: rgba(0, 0, 0, 0.25);
   }
 }
+
+/* ========================================================= */
+/* MODERN GLOW & ANIMATION SYSTEM                            */
+/* ========================================================= */
+
+@keyframes shimmerSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 16px -2px var(--glow-color, rgba(59, 130, 246, 0.45));
+    border-color: rgba(59, 130, 246, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 28px 4px var(--glow-color, rgba(59, 130, 246, 0.75));
+    border-color: rgba(96, 165, 250, 0.9);
+  }
+}
+
+@keyframes pulseGlowGold {
+  0%, 100% {
+    box-shadow: 0 0 16px -2px rgba(245, 158, 11, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 28px 4px rgba(245, 158, 11, 0.75);
+  }
+}
+
+@keyframes dashFlow {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes pingSlow {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/* Shimmer Light Sweeper on Progress Bars */
+.shimmer-bar-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-bar-sweep::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 100%
+  );
+  animation: shimmerSweep 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+/* Glow Boxes / Cards */
+.glow-box-blue {
+  box-shadow: 0 0 26px -3px rgba(59, 130, 246, 0.32);
+}
+
+.glow-box-amber {
+  box-shadow: 0 0 26px -3px rgba(245, 158, 11, 0.32);
+}
+
+.glow-box-emerald {
+  box-shadow: 0 0 26px -3px rgba(16, 185, 129, 0.32);
+}
+
+.glow-box-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glow-box-hover:hover {
+  box-shadow: 0 10px 30px -5px rgba(59, 130, 246, 0.22), 0 0 15px rgba(59, 130, 246, 0.18);
+  transform: translateY(-2px);
+}
+
+/* Glow Progress Bars */
+.glow-bar-blue {
+  box-shadow: 0 0 14px 1px rgba(59, 130, 246, 0.65);
+}
+
+.glow-bar-emerald {
+  box-shadow: 0 0 14px 1px rgba(16, 185, 129, 0.65);
+}
+
+.glow-bar-amber {
+  box-shadow: 0 0 14px 1px rgba(245, 158, 11, 0.65);
+}
+
+/* Glow SVG Lines and Curves */
+.glow-line-blue {
+  filter: drop-shadow(0 0 7px rgba(59, 130, 246, 0.75));
+}
+
+.glow-line-emerald {
+  filter: drop-shadow(0 0 7px rgba(16, 185, 129, 0.75));
+}
+
+.glow-line-amber {
+  filter: drop-shadow(0 0 7px rgba(245, 158, 11, 0.75));
+}
+
+/* Animated Flowing Dashed Lines */
+.animate-dash-flow {
+  animation: dashFlow 3s linear infinite;
+}
+
+/* Glow on Key Icons */
+.glow-icon-blue {
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.55));
+}
+
+.glow-icon-amber {
+  filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.6));
+}
+
+.glow-icon-emerald {
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.6));
+}
+
+.animate-float-gentle {
+  animation: floatGentle 3s ease-in-out infinite;
+}
+
+.animate-pulse-glow-blue {
+  --glow-color: rgba(59, 130, 246, 0.55);
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+.animate-pulse-glow-gold {
+  animation: pulseGlowGold 3s ease-in-out infinite;
+}
+
+.animate-ping-slow {
+  animation: pingSlow 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
