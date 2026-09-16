@@ -30,8 +30,10 @@ import { ProfileModal } from './components/ProfileModal';
 import { BrandCustomizerModal } from './components/BrandCustomizerModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Cloud, CloudOff, AlertCircle, RefreshCw, X, Loader2 } from 'lucide-react';
+import { useTheme } from './context/ThemeContext';
 
 export default function App() {
+  const { isDark } = useTheme();
   const currentDate = new Date();
   const [currentMonth, setCurrentMonth] = useState<number>(currentDate.getMonth() + 1);
   const [currentYear, setCurrentYear] = useState<number>(currentDate.getFullYear());
@@ -301,12 +303,18 @@ export default function App() {
   // Initial authentication loading state (Apple Minimalist Splash)
   if (isAuthInitializing || (authenticatedUserId && isDataLoading && users.length === 0 && !errorMessage)) {
     return (
-      <div className="min-h-screen bg-[#f5f5f7] flex flex-col items-center justify-center p-6 text-slate-900">
+      <div className={`min-h-screen flex flex-col items-center justify-center p-6 transition-colors duration-200 ${
+        isDark ? 'bg-[#070b13] text-slate-100' : 'bg-[#f5f5f7] text-slate-900'
+      }`}>
         <div className="flex flex-col items-center gap-4 animate-in fade-in duration-300">
-          <div className="w-12 h-12 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-black/[0.05] flex items-center justify-center">
-            <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+          <div className={`w-12 h-12 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] border flex items-center justify-center ${
+            isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-black/[0.05]'
+          }`}>
+            <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
           </div>
-          <p className="text-xs font-semibold text-slate-500 tracking-tight">
+          <p className={`text-xs font-semibold tracking-tight ${
+            isDark ? 'text-slate-400' : 'text-slate-500'
+          }`}>
             {isAuthInitializing ? 'A verificar autenticação...' : 'A sincronizar dados com Supabase...'}
           </p>
         </div>
@@ -317,13 +325,17 @@ export default function App() {
   // If user is authenticated but loading completely failed and no users could be retrieved
   if (authenticatedUserId && users.length === 0 && errorMessage) {
     return (
-      <div className="min-h-screen bg-[#f5f5f7] flex flex-col items-center justify-center p-6 text-slate-900">
-        <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] border border-rose-200 text-center space-y-4">
+      <div className={`min-h-screen flex flex-col items-center justify-center p-6 transition-colors duration-200 ${
+        isDark ? 'bg-[#070b13] text-slate-100' : 'bg-[#f5f5f7] text-slate-900'
+      }`}>
+        <div className={`max-w-md w-full rounded-3xl p-8 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] border text-center space-y-4 ${
+          isDark ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-rose-200 text-slate-900'
+        }`}>
           <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900">Erro de Comunicação com Supabase</h2>
-          <p className="text-xs text-rose-700 font-medium bg-rose-50 p-3 rounded-xl">{errorMessage}</p>
+          <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Erro de Comunicação com Supabase</h2>
+          <p className="text-xs text-rose-700 font-medium bg-rose-50 dark:bg-rose-950/40 dark:text-rose-300 p-3 rounded-xl">{errorMessage}</p>
           <div className="flex items-center justify-center gap-3 pt-2">
             <button
               onClick={() => loadSupabaseData(currentMonth, currentYear)}
@@ -334,7 +346,9 @@ export default function App() {
             </button>
             <button
               onClick={handleLogout}
-              className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition cursor-pointer"
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
             >
               Terminar Sessão
             </button>
@@ -356,7 +370,11 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f] font-sans antialiased flex flex-col selection:bg-slate-900 selection:text-white">
+    <div className={`min-h-screen font-sans antialiased flex flex-col transition-colors duration-200 ${
+      isDark
+        ? 'bg-[#070b13] text-white selection:bg-blue-600 selection:text-white'
+        : 'bg-[#f5f5f7] text-black selection:bg-slate-900 selection:text-white'
+    }`}>
       {/* Top Navbar */}
       <Navbar
         currentUser={currentUser}
@@ -523,26 +541,26 @@ export default function App() {
         brand={brand}
       />
 
-      {/* Apple-styled Minimalist Footer (Desktop) */}
-      <footer className="hidden md:block border-t border-black/[0.05] bg-white/70 backdrop-blur-md py-5 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-600">{brand.name}</span>
-            <span>&bull;</span>
+      {/* Dark High-Contrast Minimalist Footer (Desktop) */}
+      <footer className="hidden md:block border-t border-slate-800/80 bg-slate-950 text-slate-200 py-5 mt-auto shadow-inner">
+        <div className="max-w-7xl mx-auto px-4 text-center text-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 flex-wrap justify-center sm:justify-start">
+            <span className="font-bold text-white tracking-tight text-[13px]">{brand.name}</span>
+            <span className="text-slate-600">&bull;</span>
             {supabaseConnected ? (
-              <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[11px] font-medium border border-emerald-200/60">
-                <Cloud className="w-3 h-3 text-emerald-600" />
+              <span className="inline-flex items-center gap-1.5 text-emerald-400 bg-emerald-500/15 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-emerald-500/30 shadow-xs">
+                <Cloud className="w-3.5 h-3.5 text-emerald-400" />
                 Supabase Sincronizado
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full text-[11px] font-medium border border-slate-200">
-                <CloudOff className="w-3 h-3 text-slate-400" />
+              <span className="inline-flex items-center gap-1.5 text-slate-200 bg-slate-800/90 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-700/80">
+                <CloudOff className="w-3.5 h-3.5 text-slate-400" />
                 Modo Local (Supabase Desconectado)
               </span>
             )}
           </div>
-          <div className="text-[11px] text-slate-400">
-            {brand.tagline || 'Gestão de Metas e Atualização de Resultados'} &bull; {currentYear}
+          <div className="text-[12px] text-slate-300 font-medium tracking-wide">
+            {brand.tagline || 'Gestão de Metas e Atualização de Resultados'} <span className="text-slate-600">&bull;</span> <span className="text-slate-400 font-semibold">{currentYear}</span>
           </div>
         </div>
       </footer>

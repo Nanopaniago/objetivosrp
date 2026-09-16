@@ -363,12 +363,82 @@ VALUES (
   'brand_config',
   'brand_config',
   '{
-    "name": "SalesFlow",
-    "highlightWord": "Flow",
+    "name": "Objetivos RP",
+    "highlightWord": "RP",
     "tagline": "Gestão de Metas & Desempenho Comercial",
     "logoType": "preset",
     "logoPreset": "leaf",
     "accent": "apple_blue"
   }'::jsonb
 )
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT (key) DO UPDATE SET
+  value = EXCLUDED.value;
+
+-- ==============================================================================
+-- SEED DO SUPER ADMINISTRADOR (nanopaniago1@gmail.com / somos@102030)
+-- ==============================================================================
+
+DO $$
+DECLARE
+  super_admin_id uuid := 'a0000000-0000-0000-0000-000000000001'::uuid;
+BEGIN
+  -- Se o utilizador não existir no auth.users, insere com palavra-passe encriptada
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'nanopaniago1@gmail.com') THEN
+    INSERT INTO auth.users (
+      id,
+      instance_id,
+      email,
+      encrypted_password,
+      email_confirmed_at,
+      raw_app_meta_data,
+      raw_user_meta_data,
+      created_at,
+      updated_at,
+      role,
+      confirmation_token
+    ) VALUES (
+      super_admin_id,
+      '00000000-0000-0000-0000-000000000000',
+      'nanopaniago1@gmail.com',
+      crypt('somos@102030', gen_salt('bf')),
+      now(),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{"name":"Nano Paniago","username":"nanopaniago1","role":"super_admin"}'::jsonb,
+      now(),
+      now(),
+      'authenticated',
+      ''
+    );
+  ELSE
+    SELECT id INTO super_admin_id FROM auth.users WHERE email = 'nanopaniago1@gmail.com' LIMIT 1;
+    UPDATE auth.users
+    SET encrypted_password = crypt('somos@102030', gen_salt('bf')),
+        updated_at = now()
+    WHERE id = super_admin_id;
+  END IF;
+
+  -- Garante que o registo correspondente existe em public.profiles com perfil super_admin
+  INSERT INTO public.profiles (
+    id,
+    name,
+    username,
+    email,
+    role,
+    store_name,
+    active
+  ) VALUES (
+    super_admin_id,
+    'Nano Paniago',
+    'nanopaniago1',
+    'nanopaniago1@gmail.com',
+    'super_admin',
+    'Porto de Mós',
+    true
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    role = 'super_admin',
+    email = 'nanopaniago1@gmail.com',
+    username = 'nanopaniago1',
+    active = true;
+END $$;
+

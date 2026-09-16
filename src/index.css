@@ -3,12 +3,17 @@
 @layer base {
   body {
     background-color: #f5f5f7;
-    color: #1d1d1f;
+    color: #000000;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+  }
+
+  html.dark, html.dark body, body.dark {
+    background-color: #070b13;
+    color: #ffffff;
   }
 
   /* Apple-inspired subtle scrollbar */
@@ -25,6 +30,14 @@
   }
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 0, 0, 0.25);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
@@ -61,9 +74,21 @@
   }
 }
 
-@keyframes dashFlow {
+@keyframes conveyorBeltUp {
+  from {
+    stroke-dashoffset: 0;
+  }
   to {
-    stroke-dashoffset: -40;
+    stroke-dashoffset: -28;
+  }
+}
+
+@keyframes dashFlow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -28;
   }
 }
 
@@ -162,9 +187,13 @@
   filter: drop-shadow(0 0 7px rgba(245, 158, 11, 0.75));
 }
 
-/* Animated Flowing Dashed Lines */
+/* Animated Conveyor Belt Dashed Line (smooth ascending flow) */
+.animate-conveyor-belt {
+  animation: conveyorBeltUp 1.2s linear infinite;
+}
+
 .animate-dash-flow {
-  animation: dashFlow 3s linear infinite;
+  animation: conveyorBeltUp 1.2s linear infinite;
 }
 
 /* Glow on Key Icons */
@@ -195,4 +224,37 @@
 
 .animate-ping-slow {
   animation: pingSlow 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Custom smooth horizontal carousel scrollbar */
+.carousel-horizontal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.carousel-horizontal-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  display: block;
+}
+
+.carousel-horizontal-scrollbar::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.12);
+  border-radius: 9999px;
+}
+
+.carousel-horizontal-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.38);
+  border-radius: 9999px;
+}
+
+.carousel-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.65);
+}
+
+.dark .carousel-horizontal-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+}
+
+.dark .carousel-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.7);
 }

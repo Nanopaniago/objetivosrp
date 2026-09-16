@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, BrandConfig } from '../types';
 import { BrandLogo } from './BrandLogo';
 import {
@@ -6,12 +6,13 @@ import {
   User as UserIcon,
   Eye,
   EyeOff,
-  ShieldCheck,
   AlertCircle,
   ArrowRight,
   Cloud,
   CheckCircle2,
   KeyRound,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { getAccentClasses } from '../utils/brand';
 import { authService } from '../services/auth.service';
@@ -29,12 +30,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   brand,
   onLogin,
 }) => {
-  const { isDark } = useTheme();
+  const { isDark, toggleTheme, setTheme } = useTheme();
   const [username, setUsername] = useState('nanopaniago1@gmail.com');
   const [password, setPassword] = useState('somos@102030');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Ensure dark theme is active for the dark background experience
+  useEffect(() => {
+    if (!isDark) {
+      setTheme('dark');
+    }
+  }, []);
 
   const accentClasses = getAccentClasses(brand.accent);
   const supabaseConnected = isSupabaseConfigured();
@@ -76,8 +84,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
   return (
     <div className={`min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden transition-colors duration-200 ${
-      isDark ? 'bg-slate-950 text-slate-100' : 'bg-[#f5f5f7] text-slate-900'
+      isDark ? 'bg-[#070b13] text-slate-100' : 'bg-[#f5f5f7] text-slate-900'
     }`}>
+      {/* Theme Toggle Button */}
+      <button
+        type="button"
+        onClick={toggleTheme}
+        className={`absolute top-5 right-5 p-2.5 rounded-full border transition z-20 cursor-pointer shadow-md ${
+          isDark
+            ? 'bg-slate-900/90 border-slate-800 text-amber-400 hover:text-amber-300 hover:bg-slate-800'
+            : 'bg-white/90 border-black/[0.08] text-slate-600 hover:text-slate-900 hover:bg-white'
+        }`}
+        title={isDark ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+        aria-label="Alternar tema"
+      >
+        {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+      </button>
+
       {/* Subtle organic ambient gradients */}
       <div className={`absolute top-1/6 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-3xl pointer-events-none ${
         isDark
@@ -270,28 +293,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               )}
             </button>
           </form>
-
-          {/* Policy Information */}
-          <div className={`mt-6 p-3.5 rounded-2xl border text-[11px] space-y-1.5 ${
-            isDark
-              ? 'bg-slate-800/40 border-slate-800 text-slate-400'
-              : 'bg-[#f5f5f7] border-black/[0.04] text-slate-600'
-          }`}>
-            <div className={`flex items-center gap-1.5 font-bold ${
-              isDark ? 'text-slate-200' : 'text-slate-800'
-            }`}>
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-              <span>Acesso Administrativo Autorizado:</span>
-            </div>
-            <ul className="list-disc pl-4 space-y-0.5">
-              <li>
-                <strong className={isDark ? 'text-slate-200' : 'text-slate-700'}>Super Administrador:</strong> nanopaniago1@gmail.com
-              </li>
-              <li>
-                <strong className={isDark ? 'text-slate-200' : 'text-slate-700'}>Controlo Total:</strong> Gestão individual de metas por vendedor, escalas e relatórios.
-              </li>
-            </ul>
-          </div>
         </div>
 
         {/* Footer info */}

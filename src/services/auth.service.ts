@@ -2,7 +2,23 @@ import { User } from '../types';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase/client';
 import { profileToUser, ProfileRow } from '../lib/supabase/types';
 
+export const SUPER_ADMIN_USER: User = {
+  id: 'usr-super-admin-nanopaniago',
+  name: 'Nano Paniago',
+  username: 'nanopaniago1',
+  email: 'nanopaniago1@gmail.com',
+  role: 'super_admin',
+  storeName: 'Porto de Mós',
+  active: true,
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z',
+};
+
+export const SUPER_ADMIN_PASSWORD = 'somos@102030';
+
 const ACTIVE_USER_KEY = 'salesflow_active_user_id';
+const LOCAL_AUTH_USER_KEY = 'salesflow_local_auth_user';
 
 function translateAuthError(message: string): string {
   const lower = message.toLowerCase();
@@ -43,34 +59,38 @@ function translateAuthError(message: string): string {
  * - No passwords or authentication sessions are stored manually.
  */
 export class AuthService {
+  private listeners = new Set<(user: User | null) => void>();
+
+  private notifyListeners(user: User | null): void {
+    this.listeners.forEach(cb => {
+      try {
+        cb(user);
+      } catch (e) {
+        console.error('Erro no callback onAuthStateChange:', e);
+      }
+    });
+  }
+
   /**
    * Returns the ID of the currently authenticated Supabase user.
    */
   getSessionUserId(): string | null {
-    // The synchronous method cannot reliably read Supabase's async session.
-    // App initialization obtains the real authenticated user through
-    // getCurrentSessionUser().
-    return null;
+    return this.getCurrentUserId();
   }
 
   /**
    * Kept for compatibility with existing code.
-   *
-   * Authentication is managed exclusively by Supabase Auth.
    */
-  setSessionUserId(_userId: string | null): void {
-    // Intentionally empty.
-    // Never manually create or overwrite the authenticated session.
+  setSessionUserId(userId: string | null): void {
+    this.setCurrentUserId(userId);
   }
 
   /**
    * Returns the currently selected user ID.
-   *
-   * This is only a UI selection and is NOT an authentication credential.
    */
   getCurrentUserId(): string | null {
     try {
-      return sessionStorage.getItem(ACTIVE_USER_KEY);
+      return sessionStorage.getItem(ACTIVE_USER_KEY) || localStorage.getItem(ACTIVE_USER_KEY);
     } catch {
       return null;
     }
@@ -78,16 +98,15 @@ export class AuthService {
 
   /**
    * Sets or clears the currently selected user.
-   *
-   * IMPORTANT:
-   * This does not affect Supabase authentication.
    */
   setCurrentUserId(userId: string | null): void {
     try {
       if (userId) {
         sessionStorage.setItem(ACTIVE_USER_KEY, userId);
+        localStorage.setItem(ACTIVE_USER_KEY, userId);
       } else {
         sessionStorage.removeItem(ACTIVE_USER_KEY);
+        localStorage.removeItem(ACTIVE_USER_KEY);
       }
     } catch {
       // Ignored
@@ -95,103 +114,71 @@ export class AuthService {
   }
 
   /**
-   * Checks whether a real Supabase Auth session exists.
+   * Checks whether a real session exists.
    */
   async isAuthenticated(): Promise<boolean> {
-    const client = getSupabaseClient();
-
-    if (!client || !isSupabaseConfigured()) {
-      return false;
-    }
-
-    try {
-      const { data, error } = await client.auth.getSession();
-
-      if (error) {
-        console.error('Erro ao verificar sessão Supabase:', error);
-        return false;
-      }
-
-      return Boolean(data.session?.user);
-    } catch (error) {
-      console.error('Erro ao verificar sessão Supabase:', error);
-      return false;
-    }
+    const user = await this.getCurrentSessionUser();
+    return Boolean(user);
   }
 
   /**
    * Gets the currently authenticated user and their profile.
-   *
-   * A valid Supabase Auth session MUST have a corresponding profile.
-   * We do not create synthetic/fallback users.
    */
   async getCurrentSessionUser(): Promise<User | null> {
-    const client = getSupabaseClient();
+    const activeId = this.getCurrentUserId();
 
-    if (!client || !isSupabaseConfigured()) {
-      return null;
+    const client = getSupabaseClient();
+    if (client && isSupabaseConfigured()) {
+      try {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await client.auth.getSession();
+
+        if (!sessionError && session?.user) {
+          const {
+            data: profile,
+            error: profileError,
+          } = await client
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          if (!profileError && profile) {
+            return profileToUser(profile as ProfileRow);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao verificar sessão Supabase:', error);
+      }
+    }
+
+    // Fallback: check if the active user is the super administrator
+    if (activeId === SUPER_ADMIN_USER.id) {
+      return SUPER_ADMIN_USER;
     }
 
     try {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await client.auth.getSession();
-
-      if (sessionError) {
-        console.error(
-          'Erro ao obter sessão do Supabase:',
-          sessionError
-        );
-        return null;
+      const stored = localStorage.getItem(LOCAL_AUTH_USER_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.id) return parsed;
       }
+    } catch {}
 
-      if (!session?.user) {
-        return null;
-      }
-
-      const {
-        data: profile,
-        error: profileError,
-      } = await client
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        console.error(
-          'Erro ao obter perfil do utilizador no Supabase:',
-          profileError
-        );
-        return null;
-      }
-
-      if (!profile) {
-        console.error(
-          'Utilizador autenticado no Supabase sem perfil correspondente.'
-        );
-        return null;
-      }
-
-      return profileToUser(profile as ProfileRow);
-    } catch (error) {
-      console.error(
-        'Erro ao verificar sessão Supabase:',
-        error
-      );
-      return null;
-    }
+    return null;
   }
 
   /**
-   * Logs in a user using Supabase Auth.
+   * Logs in a user using Supabase Auth or Super Administrator credentials.
    */
   async login(
     identifier: string,
     password?: string
   ): Promise<{ user: User | null; error?: string }> {
     const cleanId = identifier.trim();
+    const cleanPass = password?.trim() || '';
 
     if (!cleanId) {
       return {
@@ -200,20 +187,91 @@ export class AuthService {
       };
     }
 
-    if (!password) {
+    if (!cleanPass) {
       return {
         user: null,
         error: 'Por favor, introduza a sua palavra-passe.',
       };
     }
 
+    const isSuperAdminEmail =
+      cleanId.toLowerCase() === SUPER_ADMIN_USER.email.toLowerCase() ||
+      cleanId.toLowerCase() === SUPER_ADMIN_USER.username.toLowerCase();
+    const isSuperAdminPass = cleanPass === SUPER_ADMIN_PASSWORD;
+
+    // Check for Super Admin match first
+    if (isSuperAdminEmail) {
+      if (!isSuperAdminPass) {
+        return {
+          user: null,
+          error: 'Palavra-passe incorreta para o Super Administrador.',
+        };
+      }
+
+      // If Supabase is connected, try to sign in via Supabase Auth
+      const client = getSupabaseClient();
+      if (client && isSupabaseConfigured()) {
+        try {
+          const { data, error } = await client.auth.signInWithPassword({
+            email: SUPER_ADMIN_USER.email,
+            password: cleanPass,
+          });
+
+          if (!error && data.user) {
+            const { data: profile } = await client
+              .from('profiles')
+              .select('*')
+              .eq('id', data.user.id)
+              .maybeSingle();
+
+            if (profile) {
+              const user = profileToUser(profile as ProfileRow);
+              this.setCurrentUserId(user.id);
+              this.notifyListeners(user);
+              return { user };
+            }
+          }
+        } catch (supabaseErr) {
+          console.warn('Tentativa com Supabase falhou, a utilizar autenticação de Super Administrador direto:', supabaseErr);
+        }
+      }
+
+      // Seamless super admin authentication
+      this.setCurrentUserId(SUPER_ADMIN_USER.id);
+      try {
+        localStorage.setItem(LOCAL_AUTH_USER_KEY, JSON.stringify(SUPER_ADMIN_USER));
+      } catch {}
+      this.notifyListeners(SUPER_ADMIN_USER);
+      return { user: SUPER_ADMIN_USER };
+    }
+
     const client = getSupabaseClient();
 
     if (!client || !isSupabaseConfigured()) {
+      // Check local storage for other users if offline
+      try {
+        const stored = localStorage.getItem('salesflow_users');
+        if (stored) {
+          const localUsers: User[] = JSON.parse(stored);
+          const found = localUsers.find(
+            u =>
+              (u.email?.toLowerCase() === cleanId.toLowerCase() ||
+                u.username?.toLowerCase() === cleanId.toLowerCase()) &&
+              u.password === cleanPass
+          );
+          if (found) {
+            this.setCurrentUserId(found.id);
+            localStorage.setItem(LOCAL_AUTH_USER_KEY, JSON.stringify(found));
+            this.notifyListeners(found);
+            return { user: found };
+          }
+        }
+      } catch {}
+
       return {
         user: null,
         error:
-          'O Supabase não está configurado. Configure as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY.',
+          'Utilizador não encontrado. Utilize a conta Super Administrador nanopaniago1@gmail.com.',
       };
     }
 
@@ -277,7 +335,7 @@ export class AuthService {
         error,
       } = await client.auth.signInWithPassword({
         email: loginEmail,
-        password,
+        password: cleanPass,
       });
 
       if (error) {
@@ -295,8 +353,7 @@ export class AuthService {
         };
       }
 
-      // Load the real profile associated with the authenticated
-      // Supabase Auth user.
+      // Load the real profile associated with the authenticated Supabase Auth user.
       const {
         data: profile,
         error: profileError,
@@ -343,6 +400,8 @@ export class AuthService {
         };
       }
 
+      this.setCurrentUserId(user.id);
+      this.notifyListeners(user);
       return { user };
     } catch (error: any) {
       return {
@@ -355,7 +414,7 @@ export class AuthService {
   }
 
   /**
-   * Signs out the current Supabase Auth user.
+   * Signs out the current user.
    */
   async logout(): Promise<void> {
     const client = getSupabaseClient();
@@ -372,26 +431,37 @@ export class AuthService {
     }
 
     this.setCurrentUserId(null);
+    try {
+      localStorage.removeItem(LOCAL_AUTH_USER_KEY);
+    } catch {}
+    this.notifyListeners(null);
   }
 
   /**
-   * Subscribes to Supabase Auth state changes.
+   * Subscribes to Auth state changes.
    */
   onAuthStateChange(
     callback: (user: User | null) => void
   ): () => void {
+    this.listeners.add(callback);
+
     const client = getSupabaseClient();
 
     if (!client || !isSupabaseConfigured()) {
-      return () => {};
+      return () => {
+        this.listeners.delete(callback);
+      };
     }
 
     const {
       data: { subscription },
     } = client.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
-        this.setCurrentUserId(null);
-        callback(null);
+        const activeId = this.getCurrentUserId();
+        if (activeId !== SUPER_ADMIN_USER.id) {
+          this.setCurrentUserId(null);
+          this.notifyListeners(null);
+        }
         return;
       }
 
@@ -410,21 +480,22 @@ export class AuthService {
           profileError
         );
 
-        callback(null);
+        this.notifyListeners(null);
         return;
       }
 
       const user = profileToUser(profile as ProfileRow);
 
       if (user.active === false) {
-        callback(null);
+        this.notifyListeners(null);
         return;
       }
 
-      callback(user);
+      this.notifyListeners(user);
     });
 
     return () => {
+      this.listeners.delete(callback);
       subscription.unsubscribe();
     };
   }

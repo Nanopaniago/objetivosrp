@@ -230,7 +230,7 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
       className={`rounded-3xl border transition-all duration-300 shadow-sm overflow-hidden ${
         isDark
           ? 'bg-[#0f172a] border-white/[0.08] text-white shadow-black/20'
-          : 'bg-white border-slate-200/80 text-slate-900 shadow-slate-100'
+          : 'bg-white border-slate-200/80 text-black shadow-slate-100'
       }`}
     >
       {/* ========================================================= */}
@@ -244,14 +244,14 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
               <div className="w-10 h-10 rounded-2xl bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black">
                 <Target className="w-5 h-5" />
               </div>
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight">
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-black dark:text-white">
                 Categorias e Objetivos
               </h2>
               <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                 O seu progresso por categoria
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl">
               Acompanhamento analítico e ritmo diário necessário para atingir 100% de cada meta até ao final do mês.
             </p>
           </div>
@@ -281,14 +281,27 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
                 : 'bg-slate-50/80 border-slate-200/70'
             }`}
           >
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1 font-medium">
+            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mb-1 font-medium">
               <span>Metas em Valor</span>
-              <Target className="w-3.5 h-3.5 text-blue-500" />
+              <motion.div
+                initial={{ scale: 0.8 }}
+                whileInView={{ scale: [0.8, 1.2, 1], rotate: [0, 8, 0] }}
+                viewport={{ once: false, amount: 0.2 }}
+                transition={{ duration: 0.6 }}
+              >
+                <Target className="w-3.5 h-3.5 text-blue-500" />
+              </motion.div>
             </div>
-            <div className="text-lg sm:text-xl font-black tabular-nums tracking-tight">
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: false, amount: 0.2 }}
+              transition={{ duration: 0.5 }}
+              className="text-lg sm:text-xl font-black tabular-nums tracking-tight text-black dark:text-white"
+            >
               {formatCategoryValue(stats.totalTargetEuros, 'currency')}
-            </div>
-            <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+            </motion.div>
+            <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 flex items-center gap-1">
               <span>Total acumulado a atingir</span>
             </div>
           </div>
@@ -301,14 +314,27 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
                 : 'bg-slate-50/80 border-slate-200/70'
             }`}
           >
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1 font-medium">
+            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mb-1 font-medium">
               <span>Já Realizado</span>
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+              <motion.div
+                initial={{ scale: 0.8 }}
+                whileInView={{ scale: [0.8, 1.2, 1], rotate: [0, -8, 0] }}
+                viewport={{ once: false, amount: 0.2 }}
+                transition={{ duration: 0.6 }}
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+              </motion.div>
             </div>
-            <div className="text-lg sm:text-xl font-black text-emerald-500 tabular-nums tracking-tight">
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: false, amount: 0.2 }}
+              transition={{ duration: 0.5 }}
+              className="text-lg sm:text-xl font-black text-emerald-500 tabular-nums tracking-tight"
+            >
               {formatCategoryValue(stats.totalExecutedEuros, 'currency')}
-            </div>
-            <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+            </motion.div>
+            <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 flex items-center gap-1 font-medium">
               <span>Falta: {formatCategoryValue(stats.remainingEuros, 'currency')}</span>
             </div>
           </div>
@@ -321,15 +347,28 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
                 : 'bg-slate-50/80 border-slate-200/70'
             }`}
           >
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1 font-medium">
+            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mb-1 font-medium">
               <span>Metas no Alvo</span>
-              <Trophy className="w-3.5 h-3.5 text-amber-500" />
+              <motion.div
+                initial={{ scale: 0.8 }}
+                whileInView={{ scale: [0.8, 1.2, 1], rotate: [0, -8, 0] }}
+                viewport={{ once: false, amount: 0.2 }}
+                transition={{ duration: 0.6 }}
+              >
+                <Trophy className="w-3.5 h-3.5 text-amber-500" />
+              </motion.div>
             </div>
-            <div className="text-lg sm:text-xl font-black tabular-nums tracking-tight flex items-baseline gap-1.5">
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: false, amount: 0.2 }}
+              transition={{ duration: 0.5 }}
+              className="text-lg sm:text-xl font-black tabular-nums tracking-tight flex items-baseline gap-1.5"
+            >
               <span className="text-blue-500">{stats.achievedCount}</span>
-              <span className="text-slate-400 text-sm font-semibold">de {stats.totalCategories}</span>
-            </div>
-            <div className="text-[11px] text-slate-400 mt-1">
+              <span className="text-slate-600 dark:text-slate-400 text-sm font-semibold">de {stats.totalCategories}</span>
+            </motion.div>
+            <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 font-medium">
               {stats.achievedCount === stats.totalCategories
                 ? '100% dos objetivos atingidos!'
                 : `${stats.totalCategories - stats.achievedCount} categorias em andamento`}
@@ -344,11 +383,24 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
                 : 'bg-slate-50/80 border-slate-200/70'
             }`}
           >
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1 font-medium">
+            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mb-1 font-medium">
               <span>Média de Cumprimento</span>
-              <Zap className="w-3.5 h-3.5 text-indigo-500" />
+              <motion.div
+                initial={{ scale: 0.8 }}
+                whileInView={{ scale: [0.8, 1.2, 1], rotate: [0, 8, 0] }}
+                viewport={{ once: false, amount: 0.2 }}
+                transition={{ duration: 0.6 }}
+              >
+                <Zap className="w-3.5 h-3.5 text-indigo-500" />
+              </motion.div>
             </div>
-            <div className="text-lg sm:text-xl font-black tabular-nums tracking-tight flex items-baseline gap-1.5">
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: false, amount: 0.2 }}
+              transition={{ duration: 0.5 }}
+              className="text-lg sm:text-xl font-black tabular-nums tracking-tight flex items-baseline gap-1.5"
+            >
               <span
                 className={
                   stats.averagePercentage >= 100
@@ -360,9 +412,9 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
               >
                 {stats.averagePercentage}%
               </span>
-            </div>
-            <div className="text-[11px] text-slate-400 mt-1 truncate" title={stats.bestCategory?.name}>
-              Top: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{stats.bestCategory?.name}</strong> ({stats.bestCategory ? Math.round(stats.bestCategory.percentage) : 0}%)
+            </motion.div>
+            <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 truncate" title={stats.bestCategory?.name}>
+              Top: <strong className="text-black dark:text-white font-semibold">{stats.bestCategory?.name}</strong> ({stats.bestCategory ? Math.round(stats.bestCategory.percentage) : 0}%)
             </div>
           </div>
         </div>
@@ -585,11 +637,11 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
                           <CategoryIcon slug={cat.slug} className="w-6 h-6" />
                         </div>
                         <div>
-                          <h3 className="text-base font-black tracking-tight leading-tight group-hover:text-blue-500 transition-colors">
+                          <h3 className="text-base font-black tracking-tight leading-tight text-black dark:text-white group-hover:text-blue-500 transition-colors">
                             {cat.name}
                           </h3>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                               {cat.metricType === 'currency' ? 'Financeiro (€)' : 'Contagem (un)'}
                             </span>
                           </div>
@@ -621,7 +673,7 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
                     {/* Middle: Core Numbers Display + Mini Radial Ring Gauge */}
                     <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50/90 dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.04] mb-4">
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 block mb-0.5">
                           Alcançado / Meta
                         </span>
                         <div className="text-2xl font-black tabular-nums tracking-tight">
@@ -631,15 +683,15 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
                                 ? 'text-emerald-500'
                                 : isDark
                                 ? 'text-white'
-                                : 'text-slate-900'
+                                : 'text-black'
                             }
                           >
                             {formatCategoryValue(executed, cat.metricType)}
                           </span>
                         </div>
-                        <div className="text-xs text-slate-400 font-semibold mt-0.5 flex items-center gap-1">
+                        <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold mt-0.5 flex items-center gap-1">
                           <span>de</span>
-                          <span className="font-bold text-slate-600 dark:text-slate-300">
+                          <span className="font-bold text-black dark:text-white">
                             {formatCategoryValue(monthlyGoal, cat.metricType)}
                           </span>
                         </div>
@@ -656,46 +708,58 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
                             strokeWidth="5"
                             fill="none"
                           />
-                          <circle
+                          <motion.circle
                             cx="30"
                             cy="30"
                             r={ringRadius}
                             stroke={isReached ? '#10b981' : theme.accentColor}
                             strokeWidth="5"
                             strokeDasharray={ringCircumference}
-                            strokeDashoffset={ringProgressOffset}
+                            initial={{ strokeDashoffset: ringCircumference }}
+                            whileInView={{ strokeDashoffset: ringProgressOffset }}
+                            viewport={{ once: false, amount: 0.2 }}
                             strokeLinecap="round"
                             fill="none"
-                            className={`transition-all duration-700 ease-out ${
-                              isReached ? 'glow-line-emerald' : 'glow-line-blue'
-                            }`}
+                            className={isReached ? 'glow-line-emerald' : 'glow-line-blue'}
+                            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
                           />
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                          <span className="text-xs font-black tabular-nums">
+                          <motion.span
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            whileInView={{ scale: 1, opacity: 1 }}
+                            viewport={{ once: false, amount: 0.2 }}
+                            transition={{ duration: 0.5, delay: 0.1 }}
+                            className="text-xs font-black tabular-nums"
+                          >
                             {Math.round(percentage)}%
-                          </span>
+                          </motion.span>
                         </div>
                       </div>
                     </div>
 
                     {/* Precision Progress Bar with Milestone Flag */}
                     <div className="mb-4">
-                      <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5 font-medium">
+                      <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mb-1.5 font-medium">
                         <span>Evolução da Meta</span>
-                        <span className="font-black text-slate-700 dark:text-slate-300 tabular-nums">
+                        <span className="font-black text-black dark:text-white tabular-nums">
                           {percentage.toFixed(1)}%
                         </span>
                       </div>
                       <div className="relative w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-black/[0.04] dark:border-white/[0.04]">
-                        <div
-                          className={`h-full rounded-full transition-all duration-700 ease-out shimmer-bar-sweep bg-gradient-to-r ${
+                        <motion.div
+                          className={`h-full rounded-full shimmer-bar-sweep bg-gradient-to-r relative ${
                             isReached
                               ? 'from-emerald-500 to-teal-400 glow-bar-emerald'
                               : `${theme.gradientClass} glow-bar-blue`
                           }`}
-                          style={{ width: `${Math.min(percentage, 100)}%` }}
-                        />
+                          initial={{ width: '0%', opacity: 0 }}
+                          whileInView={{ width: `${Math.min(percentage, 100)}%`, opacity: 1 }}
+                          viewport={{ once: false, amount: 0.2 }}
+                          transition={{ duration: 1.2, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                        >
+                          <div className="absolute right-0 top-0 bottom-0 w-1.5 rounded-full bg-white/70 blur-[1px]" />
+                        </motion.div>
                       </div>
                     </div>
 
@@ -703,7 +767,7 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
                     <div className="grid grid-cols-2 gap-2 pt-3 border-t border-black/[0.05] dark:border-white/[0.05] text-xs">
                       {/* Left: Falta ou Superado */}
                       <div className="p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02]">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
                           {isReached ? 'Excedente' : 'Falta'}
                         </span>
                         <span
@@ -721,7 +785,7 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
 
                       {/* Right: Meta Diária Necessária */}
                       <div className="p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02]">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
                           Meta / Dia
                         </span>
                         <span className="text-xs font-black text-blue-500 tabular-nums block mt-0.5">
@@ -816,11 +880,14 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
                       <span className="font-bold text-blue-500 tabular-nums">{Math.round(pct)}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div
+                      <motion.div
                         className={`h-full rounded-full shimmer-bar-sweep ${
                           isReached ? 'bg-emerald-500 glow-bar-emerald' : 'bg-blue-500 glow-bar-blue'
                         }`}
-                        style={{ width: `${Math.min(pct, 100)}%` }}
+                        initial={{ width: '0%' }}
+                        whileInView={{ width: `${Math.min(pct, 100)}%` }}
+                        viewport={{ once: false, amount: 0.2 }}
+                        transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
                       />
                     </div>
                   </div>
@@ -838,8 +905,8 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
                 <tr
                   className={`border-b text-[11px] font-bold uppercase tracking-wider ${
                     isDark
-                      ? 'bg-slate-900/90 border-white/[0.08] text-slate-400'
-                      : 'bg-slate-50 border-slate-200 text-slate-500'
+                      ? 'bg-slate-900/90 border-white/[0.08] text-white'
+                      : 'bg-slate-50 border-slate-200 text-black'
                   }`}
                 >
                   <th className="py-3.5 px-4">Categoria</th>
@@ -885,10 +952,10 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
                             <CategoryIcon slug={cat.slug} className="w-4 h-4" />
                           </div>
                           <div>
-                            <span className="font-black text-slate-900 dark:text-white block">
+                            <span className="font-black text-black dark:text-white block">
                               {cat.name}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-normal">
+                            <span className="text-[10px] text-slate-600 dark:text-slate-400 font-normal">
                               {cat.shortDescription}
                             </span>
                           </div>
@@ -897,20 +964,20 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
 
                       {/* Tipo */}
                       <td className="py-3.5 px-3">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                           {cat.metricType === 'currency' ? '€ Valor' : 'un Peças'}
                         </span>
                       </td>
 
                       {/* Alcançado */}
-                      <td className="py-3.5 px-3 text-right font-black tabular-nums text-sm">
+                      <td className="py-3.5 px-3 text-right font-black tabular-nums text-sm text-black dark:text-white">
                         <span className={isReached ? 'text-emerald-500' : ''}>
                           {formatCategoryValue(executed, cat.metricType)}
                         </span>
                       </td>
 
                       {/* Meta Mensal */}
-                      <td className="py-3.5 px-3 text-right font-semibold tabular-nums text-slate-500 dark:text-slate-400">
+                      <td className="py-3.5 px-3 text-right font-semibold tabular-nums text-black dark:text-white">
                         {formatCategoryValue(monthlyGoal, cat.metricType)}
                       </td>
 
@@ -931,13 +998,16 @@ export const CategoriesOverview: React.FC<CategoriesOverviewProps> = ({
                             </span>
                           </div>
                           <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                            <div
+                            <motion.div
                               className={`h-full rounded-full shimmer-bar-sweep ${
                                 isReached
                                   ? 'bg-emerald-500 glow-bar-emerald'
                                   : 'bg-gradient-to-r from-blue-600 to-indigo-500 glow-bar-blue'
                               }`}
-                              style={{ width: `${Math.min(pct, 100)}%` }}
+                              initial={{ width: '0%' }}
+                              whileInView={{ width: `${Math.min(pct, 100)}%` }}
+                              viewport={{ once: false, amount: 0.2 }}
+                              transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
                             />
                           </div>
                         </div>

@@ -12,6 +12,7 @@ import {
   Flame,
 } from 'lucide-react';
 import { getAccentClasses } from '../utils/brand';
+import { useTheme } from '../context/ThemeContext';
 
 interface BrandLogoProps {
   brand: BrandConfig;
@@ -26,8 +27,10 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   size = 'md',
   className = '',
   showText = false,
-  textColor = 'text-slate-900',
+  textColor,
 }) => {
+  const { isDark } = useTheme();
+  const resolvedTextColor = textColor || (isDark ? 'text-white' : 'text-black');
   const accentClasses = getAccentClasses(brand.accent);
 
   const sizeDimensions = {
@@ -123,7 +126,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       const after = rawName.substring(idx + highlight.length);
 
       return (
-        <span>
+        <span className={resolvedTextColor}>
           {before}
           <span className={accentClasses.highlightText}>{match}</span>
           {after}
@@ -131,7 +134,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       );
     }
 
-    return <span>{rawName}</span>;
+    return <span className={resolvedTextColor}>{rawName}</span>;
   };
 
   return (
@@ -163,12 +166,12 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       {showText && (
         <div className="flex flex-col text-left">
           <div className="flex items-center gap-2">
-            <h1 className={`${sizeDimensions.text} font-black tracking-tight ${textColor} leading-tight`}>
+            <h1 className={`${sizeDimensions.text} font-black tracking-tight ${resolvedTextColor} leading-tight`}>
               {renderFormattedName()}
             </h1>
           </div>
           {brand.tagline && (
-            <span className={`${sizeDimensions.sub} font-medium text-slate-500 line-clamp-1`}>
+            <span className={`${sizeDimensions.sub} font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'} line-clamp-1`}>
               {brand.tagline}
             </span>
           )}

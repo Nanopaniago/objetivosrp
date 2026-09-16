@@ -13,6 +13,7 @@ import {
 import { User, BrandConfig } from '../types';
 import { getAccentClasses } from '../utils/brand';
 import { AppTab } from './Sidebar';
+import { useTheme } from '../context/ThemeContext';
 
 interface MobileBottomNavProps {
   activeTab: AppTab;
@@ -29,6 +30,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   currentUser,
   brand,
 }) => {
+  const { isDark } = useTheme();
   const accentClasses = getAccentClasses(brand.accent);
   const isSuperOrAdmin = currentUser.role === 'super_admin' || currentUser.role === 'admin' || currentUser.role === 'manager';
 
@@ -67,7 +69,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   return (
     <nav
       aria-label="Navegação Móvel"
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/85 backdrop-blur-2xl border-t border-black/[0.08] shadow-[0_-8px_32px_rgba(0,0,0,0.06)]"
+      className={`fixed bottom-0 left-0 right-0 z-40 md:hidden backdrop-blur-2xl border-t transition-colors ${
+        isDark
+          ? 'bg-[#0a0f1d]/95 border-white/[0.08] shadow-[0_-8px_32px_rgba(0,0,0,0.5)]'
+          : 'bg-white/95 border-black/[0.08] shadow-[0_-8px_32px_rgba(0,0,0,0.06)]'
+      }`}
       style={{
         paddingBottom: 'max(env(safe-area-inset-bottom, 8px), 8px)',
       }}
@@ -89,7 +95,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               {isActive && (
                 <motion.div
                   layoutId="mobileActivePill"
-                  className="absolute inset-0 bg-black/[0.05] rounded-2xl"
+                  className={`absolute inset-0 rounded-2xl ${isDark ? 'bg-white/[0.08]' : 'bg-black/[0.05]'}`}
                   transition={{ type: 'spring', stiffness: 450, damping: 35 }}
                 />
               )}
@@ -100,13 +106,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               >
                 <Icon
                   className={`w-5 h-5 transition-colors ${
-                    isActive ? 'text-[#0071e3] stroke-[2.4]' : 'text-slate-500 stroke-[1.8]'
+                    isActive ? 'text-[#0071e3] stroke-[2.4]' : isDark ? 'text-slate-400 stroke-[1.8]' : 'text-slate-600 stroke-[1.8]'
                   }`}
                 />
               </motion.div>
               <span
                 className={`relative z-10 text-[10px] mt-0.5 tracking-tight truncate max-w-[62px] ${
-                  isActive ? 'font-bold text-slate-900' : 'font-medium text-slate-500'
+                  isActive
+                    ? `font-bold ${isDark ? 'text-white' : 'text-black'}`
+                    : isDark
+                    ? 'font-medium text-slate-400'
+                    : 'font-medium text-slate-600'
                 }`}
               >
                 {item.label}
@@ -144,7 +154,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               {isActive && (
                 <motion.div
                   layoutId="mobileActivePill"
-                  className="absolute inset-0 bg-black/[0.05] rounded-2xl"
+                  className={`absolute inset-0 rounded-2xl ${isDark ? 'bg-white/[0.08]' : 'bg-black/[0.05]'}`}
                   transition={{ type: 'spring', stiffness: 450, damping: 35 }}
                 />
               )}
@@ -155,13 +165,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               >
                 <Icon
                   className={`w-5 h-5 transition-colors ${
-                    isActive ? 'text-[#0071e3] stroke-[2.4]' : 'text-slate-500 stroke-[1.8]'
+                    isActive ? 'text-[#0071e3] stroke-[2.4]' : isDark ? 'text-slate-400 stroke-[1.8]' : 'text-slate-600 stroke-[1.8]'
                   }`}
                 />
               </motion.div>
               <span
                 className={`relative z-10 text-[10px] mt-0.5 tracking-tight truncate max-w-[62px] ${
-                  isActive ? 'font-bold text-slate-900' : 'font-medium text-slate-500'
+                  isActive
+                    ? `font-bold ${isDark ? 'text-white' : 'text-black'}`
+                    : isDark
+                    ? 'font-medium text-slate-400'
+                    : 'font-medium text-slate-600'
                 }`}
               >
                 {item.label}
