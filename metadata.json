@@ -1,6 +1,0 @@
-{
-  "name": "Objetivos RP",
-  "description": "Plataforma de gestão de objetivos, metas individuais e acompanhamento de performance comercial",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

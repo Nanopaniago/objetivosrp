@@ -1,44 +1,18 @@
 <!doctype html>
 <html lang="pt-PT">
   <head>
-    <script>
-      (function () {
-        try {
-          var desc = Object.getOwnPropertyDescriptor(window, 'fetch') || Object.getOwnPropertyDescriptor(Object.getPrototypeOf(window), 'fetch');
-          var currentFetch = window.fetch ? window.fetch.bind(window) : undefined;
-          if (desc && !desc.set && desc.configurable) {
-            Object.defineProperty(window, 'fetch', {
-              get: function () {
-                return currentFetch;
-              },
-              set: function (fn) {
-                currentFetch = fn;
-              },
-              configurable: true,
-              enumerable: true,
-            });
-          }
-        } catch (e) {
-          // silent fallback
-        }
-      })();
-    </script>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0e0f11" />
+    <meta name="color-scheme" content="dark" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="theme-color" content="#070b13" />
-    <title>Objetivos RP - Gestão de Metas & Performance</title>
-    <meta name="description" content="Plataforma de gestão de objetivos, metas individuais e acompanhamento de performance comercial." />
-    <meta property="og:title" content="Objetivos RP - Gestão de Metas & Performance" />
-    <meta property="og:description" content="Plataforma de gestão de objetivos, metas individuais e acompanhamento de performance comercial." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Objetivos RP</title>
+    <meta name="description" content="Metas, resultados e motivação das equipas de venda." />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
