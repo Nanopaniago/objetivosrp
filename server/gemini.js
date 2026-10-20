@@ -1,7 +1,7 @@
 // Image reading with Google Gemini. The API key never leaves the server.
 import { HTTPException } from 'hono/http-exception';
 
-const MODEL = () => process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const MODEL = () => process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 
 const COLUMN_HINTS = {
   plus_master: 'colunas "OBJ VDS (plus + master)" (meta) e "REAL VDS (plus + master)" (realizado)',
