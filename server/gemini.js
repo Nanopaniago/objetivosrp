@@ -34,7 +34,8 @@ async function callGemini(image, prompt, schema) {
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(90000),
     });
-  } catch {
+  } catch (e) {
+    console.error('Gemini fetch failed', e?.name, e?.message, e?.cause?.code || e?.cause?.message || '');
     throw new HTTPException(502, { message: 'Não foi possível contactar o serviço de leitura de imagens. Tenta de novo.' });
   }
   if (!res.ok) {
