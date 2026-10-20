@@ -30,11 +30,38 @@ export const api = {
   del: <T,>(url: string) => request<T>('DELETE', url),
 };
 
+/** Starts a background read and polls until it finishes (reading can take over a minute). */
+export async function runJob<T>(url: string, body: FormData, signal?: AbortSignal): Promise<T> {
+  const { job } = await api.post<{ job: string }>(url, body);
+  const started = Date.now();
+  while (Date.now() - started < 10 * 60 * 1000) {
+    await new Promise((r) => setTimeout(r, 2000));
+    if (signal?.aborted) throw new ApiError(0, 'Cancelado.');
+    const s = await api.get<{ status: 'running' | 'done' | 'error'; result?: T; error?: string }>(`/api/imports/jobs/${job}`);
+    if (s.status === 'done') return s.result as T;
+    if (s.status === 'error') throw new ApiError(502, s.error || 'Não foi possível ler o ficheiro.');
+  }
+  throw new ApiError(504, 'A leitura está a demorar demasiado. Tenta de novo.');
+}
+
+/** Crops the centre square and shrinks a photo to size×size, returning a light WEBP (JPEG fallback). */
+export async function shrinkPhoto(file: File, size = 320): Promise<Blob> {
+  const bmp = await createImageBitmap(file).catch(() => null);
+  if (!bmp) throw new ApiError(400, 'Não consegui abrir esta foto. Usa JPG ou PNG.');
+  const side = Math.min(bmp.width, bmp.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  canvas.getContext('2d')!.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, size, size);
+  const out = (type: string) => new Promise<Blob | null>((r) => canvas.toBlob(r, type, 0.85));
+  const webp = await out('image/webp');
+  return webp && webp.type === 'image/webp' ? webp : ((await out('image/jpeg')) as Blob);
+}
+
 export type Role = 'admin' | 'manager' | 'seller';
 export type Unit = 'eur' | 'un';
 
 export interface Me {
-  user: { id: number; name: string; firstName: string; username: string; role: Role; storeId: number | null; igl: boolean };
+  user: { id: number; name: string; firstName: string; username: string; role: Role; storeId: number | null; igl: boolean; avatar: number };
   stores: { id: number; name: string; code: string | null }[];
   today: string;
 }
@@ -107,14 +134,14 @@ export interface SellerDash {
   rankTotal: number;
   gapToNext: number;
   aheadName: string | null;
-  near: { id: number; name: string; points: number; pos: number; me: boolean }[];
+  near: { id: number; name: string; avatar: number; points: number; pos: number; me: boolean }[];
   series: { x: number; y: number }[];
   wins: PointEvent[];
   challenge: Challenge | null;
 }
 
 export interface TeamDash {
-  ranking: { pos: number; id: number; name: string; fullName: string; igl: boolean; me: boolean; points: number; week: number; overall: number; streak: number }[];
+  ranking: { pos: number; id: number; name: string; fullName: string; igl: boolean; avatar: number; me: boolean; points: number; week: number; overall: number; streak: number }[];
   badges: PointEvent[];
   stores: { id: number; name: string; overall: number; mine: boolean }[];
   challenge: Challenge | null;
@@ -149,6 +176,7 @@ export interface UserRow {
   storeId: number | null;
   igl: boolean;
   active: boolean;
+  avatar: number;
 }
 
 export type Kind = 'A' | 'F' | 'L' | 'O' | 'V';

@@ -1,9 +1,9 @@
 import React from 'react';
-import { Check, Copy, KeyRound, ListChecks, Plus, Store, Tag, Target, Trash2, Trophy, UserPlus, Users } from 'lucide-react';
-import { api, type Category, type Challenge, type UserRow } from '../api';
+import { Camera, Check, Copy, KeyRound, ListChecks, Plus, Store, Tag, Target, Trash2, Trophy, UserPlus, Users } from 'lucide-react';
+import { api, shrinkPhoto, type Category, type Challenge, type UserRow } from '../api';
 import { useApp } from '../App';
 import { MONTHS, amount, shortDate } from '../format';
-import { Btn, CATEGORY_ICONS, Card, CatIcon, ErrorBox, Field, Pill, Spinner, cx, inputCls, toast } from '../ui';
+import { Avatar, Btn, CATEGORY_ICONS, Card, CatIcon, ErrorBox, Field, Pill, Spinner, cx, inputCls, toast } from '../ui';
 
 type Tab = 'vendedores' | 'metas' | 'resultados' | 'desafios' | 'lojas' | 'categorias' | 'conta';
 const readTab = (): Tab | null => {
@@ -124,7 +124,7 @@ function Vendedores() {
         {users.map((u) => (
           <div key={u.id} className={cx('flex flex-col gap-3 rounded-[18px] px-3.5 py-3', !u.active && 'opacity-55')}>
             <div className="flex flex-wrap items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-limebg font-bold text-lime2">{u.firstName.charAt(0)}</span>
+              <PhotoPicker userId={u.id} name={u.firstName} v={u.avatar} size={40} onChange={reload} />
               <span className="flex min-w-0 flex-[1_1_160px] flex-col">
                 <strong className="text-[15px]">{u.name}</strong>
                 <span className="text-xs text-mute2">@{u.username} · {u.role === 'seller' ? 'Vendedor' : u.role === 'manager' ? 'Gestor' : 'Admin'}{!u.active ? ' · desativado' : ''}</span>
@@ -486,6 +486,60 @@ function Categorias() {
   );
 }
 
+// ---------------------------------------------------------------- photos
+async function uploadPhoto(userId: number, file: File) {
+  const fd = new FormData();
+  fd.append('photo', await shrinkPhoto(file), 'foto.webp');
+  await api.post(`/api/users/${userId}/avatar`, fd);
+}
+
+/** Avatar you can click to change the photo. */
+function PhotoPicker({ userId, name, v, size, onChange }: { userId: number; name: string; v: number; size: number; onChange: () => void }) {
+  const [busy, setBusy] = React.useState(false);
+  const pick = async (f?: File | null) => {
+    if (!f) return;
+    setBusy(true);
+    try { await uploadPhoto(userId, f); toast('Foto atualizada.'); onChange(); } catch (err) { toast((err as Error).message, 'bad'); } finally { setBusy(false); }
+  };
+  return (
+    <label className={cx('group relative cursor-pointer rounded-full focus-within:outline focus-within:outline-2 focus-within:outline-lime', busy && 'animate-pulse')} title={`Mudar a foto de ${name}`}>
+      <Avatar id={userId} name={name} v={v} size={size} />
+      <span className="absolute -right-0.5 -bottom-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-card bg-lime text-onlime opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"><Camera size={10} strokeWidth={2.4} aria-hidden /></span>
+      <input type="file" accept="image/*" className="sr-only" aria-label={`Mudar a foto de ${name}`} onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
+    </label>
+  );
+}
+
+function MinhaFoto() {
+  const { me } = useApp();
+  const [busy, setBusy] = React.useState(false);
+  const refresh = () => window.dispatchEvent(new Event('rp:me'));
+  const pick = async (f?: File | null) => {
+    if (!f) return;
+    setBusy(true);
+    try { await uploadPhoto(me.user.id, f); toast('Foto atualizada.'); refresh(); } catch (err) { toast((err as Error).message, 'bad'); } finally { setBusy(false); }
+  };
+  const remove = async () => {
+    try { await api.del(`/api/users/${me.user.id}/avatar`); toast('Foto removida.'); refresh(); } catch (err) { toast((err as Error).message, 'bad'); }
+  };
+  return (
+    <Card className="flex max-w-md flex-col gap-4 p-5">
+      <h2 className="m-0 text-[17px] font-bold">A minha foto</h2>
+      <div className="flex items-center gap-4">
+        <Avatar id={me.user.id} name={me.user.firstName} v={me.user.avatar} size={88} className={cx(busy && 'animate-pulse')} />
+        <div className="flex flex-col gap-2">
+          <label className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-[14px] bg-lime px-4 py-2.5 text-sm font-semibold text-onlime focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-lime">
+            <Camera size={17} aria-hidden />{me.user.avatar ? 'Trocar foto' : 'Adicionar foto'}
+            <input type="file" accept="image/*" className="sr-only" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
+          </label>
+          {!!me.user.avatar && <Btn variant="quiet" icon={Trash2} onClick={remove}>Remover</Btn>}
+        </div>
+      </div>
+      <p className="m-0 text-xs text-mute2">Aparece no ranking da loja. Recortamos ao centro e reduzimos a foto, por isso fica leve.</p>
+    </Card>
+  );
+}
+
 // ---------------------------------------------------------------- account
 function Conta() {
   const [f, setF] = React.useState({ current: '', next: '' });
@@ -494,7 +548,9 @@ function Conta() {
     try { await api.patch('/api/me/password', f); toast('Palavra-passe alterada.'); setF({ current: '', next: '' }); } catch (err) { toast((err as Error).message, 'bad'); }
   };
   return (
-    <Card className="max-w-md p-5">
+    <div className="flex flex-wrap items-start gap-4">
+    <MinhaFoto />
+    <Card className="max-w-md flex-1 p-5">
       <form onSubmit={submit} className="flex flex-col gap-3.5">
         <h2 className="m-0 text-[17px] font-bold">Mudar a minha palavra-passe</h2>
         <Field label="Palavra-passe atual"><input type="password" autoComplete="current-password" className={inputCls} required value={f.current} onChange={(e) => setF({ ...f, current: e.target.value })} /></Field>
@@ -502,5 +558,6 @@ function Conta() {
         <Btn variant="primary" type="submit" icon={Check}>Guardar</Btn>
       </form>
     </Card>
+    </div>
   );
 }

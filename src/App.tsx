@@ -2,7 +2,7 @@ import React from 'react';
 import { Calendar, ChevronLeft, ChevronRight, Home, LogOut, Settings2, Store, Target, Trophy, Upload, type LucideIcon } from 'lucide-react';
 import { api, type Me } from './api';
 import { MONTHS } from './format';
-import { Spinner, Toaster, cx, inputCls } from './ui';
+import { Avatar, Spinner, Toaster, cx, inputCls } from './ui';
 import Login from './pages/Login';
 import Painel from './pages/Painel';
 import Equipa from './pages/Equipa';
@@ -65,11 +65,13 @@ export default function App() {
     loadMe();
     const onHash = () => setRoute(readRoute());
     const onLogout = () => setMe(null);
+    window.addEventListener('rp:me', loadMe);
     window.addEventListener('hashchange', onHash);
     window.addEventListener('rp:logout', onLogout);
     return () => {
       window.removeEventListener('hashchange', onHash);
       window.removeEventListener('rp:logout', onLogout);
+      window.removeEventListener('rp:me', loadMe);
     };
   }, [loadMe]);
 
@@ -126,7 +128,7 @@ export default function App() {
             })}
           </nav>
           <div className="mt-auto flex items-center gap-2.5 rounded-2xl border border-line bg-card p-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-limebg font-bold text-lime2">{me.user.firstName.charAt(0)}</span>
+            <a href="#/gestao?tab=conta" aria-label="Mudar a minha foto"><Avatar id={me.user.id} name={me.user.firstName} v={me.user.avatar} size={36} /></a>
             <a href="#/gestao?tab=conta" title="A minha conta" className="flex min-w-0 flex-1 flex-col text-ink no-underline">
               <strong className="truncate text-sm">{me.user.firstName}</strong>
               <span className="truncate text-xs text-mute2">{roleLabel}{storeName && role === 'seller' ? ` · ${storeName}` : ''}</span>

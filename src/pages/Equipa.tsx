@@ -3,7 +3,7 @@ import { Check, Flame, Medal, Shield, Star, Store, Target, TrendingUp, Trophy, U
 import { api, type TeamDash } from '../api';
 import { useApp } from '../App';
 import { amount, relDay, shortDate } from '../format';
-import { Bar, Card, CatIcon, Empty, ErrorBox, IconTile, Spinner, cx, type Tone } from '../ui';
+import { Avatar, Bar, Card, CatIcon, Empty, ErrorBox, IconTile, Spinner, cx, type Tone } from '../ui';
 
 export default function Equipa() {
   const { me, storeId, year, month } = useApp();
@@ -56,7 +56,7 @@ export default function Equipa() {
             {near.map((n) => (
               <div key={n.id} className={cx('flex items-center gap-3 rounded-2xl border px-3.5 py-3', n.me ? 'border-lime bg-[#b8f53d22]' : 'border-limeline bg-[rgba(14,15,17,0.55)]')}>
                 <strong className="w-6 text-mute">{n.pos}</strong>
-                <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-limebg font-bold text-lime2">{n.name.charAt(0)}</span>
+                <Avatar id={n.id} name={n.name} v={n.avatar} size={34} />
                 <strong className="flex-1">{n.me ? 'Tu' : n.name}</strong>
                 {!n.me && <span className="text-[13px] text-mute">{n.points > meRow.points ? '+' : '−'}{Math.abs(n.points - meRow.points)}</span>}
                 <strong className="tabular">{n.points.toLocaleString('pt-PT')}</strong>
@@ -72,7 +72,7 @@ export default function Equipa() {
           {rows.map((r) => (
             <div key={r.id} className={cx('flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-[18px] px-4 py-3.5', r.me && 'bg-limesel')}>
               <span className={cx('flex h-[30px] w-[30px] items-center justify-center rounded-[10px] text-sm font-bold', r.pos === 1 ? 'bg-lime text-onlime' : 'bg-card2 text-ink2')}>{r.pos}</span>
-              <span className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-line2 bg-card2 font-bold text-ink2">{r.name.charAt(0)}</span>
+              <Avatar id={r.id} name={r.name} v={r.avatar} size={38} tone="plain" />
               <div className="flex min-w-0 flex-[1_1_140px] flex-col gap-0.5">
                 <span className="flex flex-wrap items-center gap-2">
                   <strong>{r.name}</strong>

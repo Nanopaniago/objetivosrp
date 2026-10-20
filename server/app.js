@@ -79,7 +79,7 @@ export function createApp(db) {
     const stores = u.store_ids.length
       ? db.prepare(`SELECT id, name, code FROM stores WHERE active = 1 AND id IN (${u.store_ids.map(() => '?').join(',')}) ORDER BY name`).all(...u.store_ids)
       : [];
-    return c.json({ user: { id: u.id, name: u.name, firstName: u.first_name, username: u.username, role: u.role, storeId: u.store_id, igl: !!u.igl }, stores, today: todayStr() });
+    return c.json({ user: { id: u.id, name: u.name, firstName: u.first_name, username: u.username, role: u.role, storeId: u.store_id, igl: !!u.igl, avatar: u.avatar || 0 }, stores, today: todayStr() });
   });
 
   app.patch('/api/me/password', async (c) => {
@@ -122,7 +122,7 @@ export function createApp(db) {
   });
 
   // ----------------------------------------------------------------- users
-  const publicUser = (u) => ({ id: u.id, name: u.name, firstName: u.first_name, username: u.username, role: u.role, storeId: u.store_id, igl: !!u.igl, active: !!u.active });
+  const publicUser = (u) => ({ id: u.id, name: u.name, firstName: u.first_name, username: u.username, role: u.role, storeId: u.store_id, igl: !!u.igl, active: !!u.active, avatar: u.avatar || 0 });
 
   app.get('/api/users', (c) => {
     const u = c.get('user');
@@ -132,6 +132,43 @@ export function createApp(db) {
       .prepare(`SELECT DISTINCT u.* FROM users u LEFT JOIN manager_stores ms ON ms.user_id = u.id WHERE u.store_id = ? OR ms.store_id = ? ORDER BY u.role DESC, u.name`)
       .all(storeId, storeId);
     return c.json(rows.map(publicUser));
+  });
+
+  // Profile photos: the browser crops and shrinks to a small JPEG/WEBP before upload.
+  const avatarDir = () => path.join(DATA_DIR, 'avatars');
+  const canEditAvatar = (u, target) => u.id === target.id || u.role === 'admin' || (target.role === 'seller' && (() => { try { assertManage(u, target.store_id); return true; } catch { return false; } })());
+  const avatarLimit = bodyLimit({ maxSize: 3 * 1024 * 1024, onError: (c) => c.json({ error: 'A foto é demasiado grande (máximo 3 MB).' }, 413) });
+  app.get('/api/users/:id/avatar', (c) => {
+    const id = int(c.req.param('id'), 'id');
+    const p = path.join(avatarDir(), `${id}.img`);
+    if (!fs.existsSync(p)) throw new HTTPException(404, { message: 'Sem foto.' });
+    const buf = fs.readFileSync(p);
+    const type = buf[0] === 0xff ? 'image/jpeg' : buf[0] === 0x89 ? 'image/png' : 'image/webp';
+    return c.body(buf, 200, { 'content-type': type, 'cache-control': 'private, max-age=31536000, immutable' });
+  });
+  app.post('/api/users/:id/avatar', avatarLimit, async (c) => {
+    const u = c.get('user');
+    const target = db.prepare('SELECT * FROM users WHERE id = ?').get(int(c.req.param('id'), 'id'));
+    if (!target) throw new HTTPException(404, { message: 'Utilizador não encontrado.' });
+    if (!canEditAvatar(u, target)) throw new HTTPException(403, { message: 'Sem permissão.' });
+    const form = await c.req.parseBody();
+    const file = form.photo;
+    if (!file || typeof file === 'string') throw bad('Falta a foto.');
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw bad('Formato não suportado. Usa JPG, PNG ou WEBP.');
+    fs.mkdirSync(avatarDir(), { recursive: true });
+    fs.writeFileSync(path.join(avatarDir(), `${target.id}.img`), new Uint8Array(await file.arrayBuffer()));
+    const v = Date.now();
+    db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(v, target.id);
+    return c.json({ avatar: v });
+  });
+  app.delete('/api/users/:id/avatar', (c) => {
+    const u = c.get('user');
+    const target = db.prepare('SELECT * FROM users WHERE id = ?').get(int(c.req.param('id'), 'id'));
+    if (!target) throw new HTTPException(404, { message: 'Utilizador não encontrado.' });
+    if (!canEditAvatar(u, target)) throw new HTTPException(403, { message: 'Sem permissão.' });
+    fs.rmSync(path.join(avatarDir(), `${target.id}.img`), { force: true });
+    db.prepare('UPDATE users SET avatar = 0 WHERE id = ?').run(target.id);
+    return c.json({ avatar: 0 });
   });
 
   app.post('/api/users', async (c) => {
@@ -326,23 +363,48 @@ export function createApp(db) {
   });
 
   // --------------------------------------------------------------- imports
+  const MIME_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif', 'application/pdf': 'pdf' };
+  const EXT_MIME = Object.fromEntries(Object.entries(MIME_EXT).map(([k, v]) => [v, k]));
   const saveImage = async (c) => {
     const form = await c.req.parseBody();
-    const file = form.image;
-    if (!file || typeof file === 'string') throw bad('Falta a imagem.');
-    if (!/^image\/(png|jpe?g|webp|heic|heif)$/.test(file.type)) throw bad('Formato não suportado. Usa PNG, JPG ou WEBP.');
+    const file = form.image || form.file;
+    if (!file || typeof file === 'string') throw bad('Falta o ficheiro.');
+    let type = file.type;
+    if (!MIME_EXT[type] && /\.pdf$/i.test(file.name || '')) type = 'application/pdf';
+    if (!MIME_EXT[type]) throw bad('Formato não suportado. Usa PNG, JPG, WEBP ou PDF.');
     const bytes = new Uint8Array(await file.arrayBuffer());
-    return { form, image: { type: file.type, bytes } };
+    return { form, image: { type, bytes } };
   };
   const storeImage = (id, image) => {
     const dir = path.join(DATA_DIR, 'uploads');
     fs.mkdirSync(dir, { recursive: true });
-    const ext = image.type.split('/')[1].replace('jpeg', 'jpg');
-    const p = path.join(dir, `${id}.${ext}`);
+    const p = path.join(dir, `${id}.${MIME_EXT[image.type]}`);
     fs.writeFileSync(p, image.bytes);
     return p;
   };
-  const imageLimit = bodyLimit({ maxSize: 12 * 1024 * 1024, onError: (c) => c.json({ error: 'A imagem é demasiado grande (máximo 12 MB).' }, 413) });
+  const imageLimit = bodyLimit({ maxSize: 15 * 1024 * 1024, onError: (c) => c.json({ error: 'O ficheiro é demasiado grande (máximo 15 MB).' }, 413) });
+
+  // Reading takes a while (and Cloudflare cuts requests at 100 s), so it runs as a background job
+  // that the browser polls. Jobs live in memory for 15 minutes.
+  const jobs = new Map();
+  const startJob = (userId, work) => {
+    const id = crypto.randomUUID();
+    const job = { id, userId, status: 'running', created: Date.now() };
+    jobs.set(id, job);
+    work()
+      .then((result) => Object.assign(job, { status: 'done', result }))
+      .catch((e) => {
+        if (!(e instanceof HTTPException)) console.error(e);
+        Object.assign(job, { status: 'error', error: e instanceof HTTPException ? e.message : 'Erro inesperado ao ler o ficheiro.' });
+      });
+    for (const [k, j] of jobs) if (Date.now() - j.created > 15 * 60 * 1000) jobs.delete(k);
+    return id;
+  };
+  app.get('/api/imports/jobs/:id', (c) => {
+    const job = jobs.get(c.req.param('id'));
+    if (!job || job.userId !== c.get('user').id) throw new HTTPException(404, { message: 'Leitura não encontrada. Tenta de novo.' });
+    return c.json({ status: job.status, result: job.result, error: job.error });
+  });
 
   app.post('/api/imports/results', imageLimit, async (c) => {
     const u = c.get('user');
@@ -350,12 +412,15 @@ export function createApp(db) {
     const storeId = int(form.store_id, 'store_id');
     assertManage(u, storeId);
     const fallback = isDate(form.date) ? form.date : todayStr();
-    const parsed = await readResultsImage(image, { categories: loadCategories(db) });
-    const draft = prepareResults(db, storeId, parsed, fallback);
-    const r = db.prepare(`INSERT INTO imports (store_id, kind, ref, parsed_json, created_by) VALUES (?, 'results', ?, ?, ?)`).run(storeId, draft.date, JSON.stringify(draft), u.id);
-    const id = Number(r.lastInsertRowid);
-    db.prepare('UPDATE imports SET image_path = ? WHERE id = ?').run(storeImage(id, image), id);
-    return c.json({ id, draft });
+    const job = startJob(u.id, async () => {
+      const parsed = await readResultsImage(image, { categories: loadCategories(db) });
+      const draft = prepareResults(db, storeId, parsed, fallback);
+      const r = db.prepare(`INSERT INTO imports (store_id, kind, ref, parsed_json, created_by) VALUES (?, 'results', ?, ?, ?)`).run(storeId, draft.date, JSON.stringify(draft), u.id);
+      const id = Number(r.lastInsertRowid);
+      db.prepare('UPDATE imports SET image_path = ? WHERE id = ?').run(storeImage(id, image), id);
+      return { id, draft };
+    });
+    return c.json({ job }, 202);
   });
 
   app.post('/api/imports/schedule', imageLimit, async (c) => {
@@ -365,12 +430,15 @@ export function createApp(db) {
     assertManage(u, storeId);
     const y = int(form.year, 'year');
     const m = int(form.month, 'month');
-    const parsed = await readScheduleImage(image, { year: y, month: m });
-    const draft = prepareSchedule(db, storeId, parsed, y, m);
-    const r = db.prepare(`INSERT INTO imports (store_id, kind, ref, parsed_json, created_by) VALUES (?, 'schedule', ?, ?, ?)`).run(storeId, `${y}-${String(m).padStart(2, '0')}`, JSON.stringify(draft), u.id);
-    const id = Number(r.lastInsertRowid);
-    db.prepare('UPDATE imports SET image_path = ? WHERE id = ?').run(storeImage(id, image), id);
-    return c.json({ id, draft });
+    const job = startJob(u.id, async () => {
+      const parsed = await readScheduleImage(image, { year: y, month: m });
+      const draft = prepareSchedule(db, storeId, parsed, y, m);
+      const r = db.prepare(`INSERT INTO imports (store_id, kind, ref, parsed_json, created_by) VALUES (?, 'schedule', ?, ?, ?)`).run(storeId, `${y}-${String(m).padStart(2, '0')}`, JSON.stringify(draft), u.id);
+      const id = Number(r.lastInsertRowid);
+      db.prepare('UPDATE imports SET image_path = ? WHERE id = ?').run(storeImage(id, image), id);
+      return { id, draft };
+    });
+    return c.json({ job }, 202);
   });
 
   const loadImport = (c) => {
@@ -384,7 +452,7 @@ export function createApp(db) {
     const imp = loadImport(c);
     if (!imp.image_path || !fs.existsSync(imp.image_path)) throw new HTTPException(404, { message: 'Imagem não encontrada.' });
     const ext = path.extname(imp.image_path).slice(1);
-    return c.body(fs.readFileSync(imp.image_path), 200, { 'content-type': `image/${ext === 'jpg' ? 'jpeg' : ext}`, 'cache-control': 'private, max-age=3600' });
+    return c.body(fs.readFileSync(imp.image_path), 200, { 'content-type': EXT_MIME[ext] || 'application/octet-stream', 'cache-control': 'private, max-age=3600' });
   });
 
   app.post('/api/imports/:id/commit', async (c) => {

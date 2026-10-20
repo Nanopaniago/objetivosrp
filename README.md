@@ -52,6 +52,10 @@ DATA_DIR=./data-demo npm run dev                # API em :3000, web em :5173
 npm test                                        # testes do motor de cálculo e da API
 ```
 
+## Fotos de perfil
+
+Cada pessoa põe a sua foto em **A minha conta** (ou clicando no avatar no canto inferior). O gestor pode pôr a foto dos seus vendedores clicando no avatar em **Gestão → Vendedores**. A foto é recortada e reduzida no navegador (320×320) e fica em `data/avatars/`.
+
 ## Como funcionam os cálculos
 
 - **Resultados** são o acumulado do mês reportado numa data (como no relatório diário). A venda de cada dia é a diferença entre dois relatórios.
@@ -63,8 +67,8 @@ npm test                                        # testes do motor de cálculo e 
 
 ## Importação por imagem
 
-1. O gestor carrega a captura do relatório diário (ou a foto da escala).
-2. O Gemini lê a tabela no servidor; a chave nunca chega ao navegador.
+1. O gestor carrega a captura ou o PDF do relatório diário (ou a foto/PDF da escala).
+2. O Gemini lê a tabela no servidor, em segundo plano (o navegador vai perguntando pelo resultado, por isso não esbarra no limite de 100 s do Cloudflare). A chave nunca chega ao navegador. Em caso de falha de rede ou sobrecarga tenta de novo sozinho, e se o modelo deixar de existir passa para o seguinte. A causa de qualquer falha fica em `docker logs objetivos-rp`.
 3. O sistema reconhece os vendedores pelo primeiro nome, ignora o gestor, compara a soma com o Total Geral e assinala acumulados que desceram.
 4. Só o que precisa de decisão é mostrado; o resto pode ser revisto numa tabela editável.
 5. Ao gravar, guarda-se uma cópia do estado anterior: a última importação pode ser desfeita.

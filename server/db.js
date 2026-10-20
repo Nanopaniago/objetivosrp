@@ -136,6 +136,9 @@ export function openDb(file) {
   const db = new DatabaseSync(target);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
   db.exec(SCHEMA);
+  // migrations
+  const userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+  if (!userCols.includes('avatar')) db.exec('ALTER TABLE users ADD COLUMN avatar INTEGER NOT NULL DEFAULT 0');
   const count = db.prepare('SELECT COUNT(*) AS n FROM categories').get().n;
   if (count === 0) {
     const ins = db.prepare('INSERT INTO categories (slug, name, unit, icon, sort) VALUES (?, ?, ?, ?, ?)');

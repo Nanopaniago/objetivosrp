@@ -1,9 +1,13 @@
 import fs from 'node:fs';
+import dns from 'node:dns';
 import path from 'node:path';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { openDb } from './db.js';
 import { createApp, bootstrapAdmin } from './app.js';
+
+// Many home servers have broken IPv6 routes: resolve IPv4 first.
+dns.setDefaultResultOrder('ipv4first');
 
 const db = openDb();
 bootstrapAdmin(db);

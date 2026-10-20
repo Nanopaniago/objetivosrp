@@ -17,6 +17,20 @@ export function CatIcon({ icon, size = 18, className = '' }: { icon: string; siz
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 
+/** Round profile photo, or the initial on a tinted disc when there is none (or it fails to load). */
+export function Avatar({ id, name, v, size = 36, tone = 'lime', className }: { id: number; name: string; v?: number; size?: number; tone?: 'lime' | 'plain'; className?: string }) {
+  const [broken, setBroken] = React.useState(false);
+  React.useEffect(() => setBroken(false), [v]);
+  const box = cx('flex shrink-0 items-center justify-center overflow-hidden rounded-full font-bold', tone === 'lime' ? 'bg-limebg text-lime2' : 'border border-line2 bg-card2 text-ink2', className);
+  return (
+    <span className={box} style={{ width: size, height: size, fontSize: Math.round(size * 0.42) }}>
+      {v && !broken
+        ? <img src={`/api/users/${id}/avatar?v=${v}`} alt="" loading="lazy" className="h-full w-full object-cover" onError={() => setBroken(true)} />
+        : <span aria-hidden>{name.charAt(0).toUpperCase()}</span>}
+    </span>
+  );
+}
+
 export function Card({ className, children, ...rest }: React.HTMLAttributes<HTMLElement> & { as?: 'section' | 'div' }) {
   return (
     <section className={cx('rounded-[22px] border border-line bg-card', className)} {...rest}>

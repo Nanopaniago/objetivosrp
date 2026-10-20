@@ -22,7 +22,7 @@ export function loadCategories(db, all = false) {
 
 export function sellersOf(db, storeId) {
   return db
-    .prepare(`SELECT id, name, first_name, username, role, store_id, igl, active FROM users WHERE store_id = ? AND role = 'seller' AND active = 1 ORDER BY name`)
+    .prepare(`SELECT id, name, first_name, username, role, store_id, igl, active, avatar FROM users WHERE store_id = ? AND role = 'seller' AND active = 1 ORDER BY name`)
     .all(storeId);
 }
 
@@ -139,10 +139,10 @@ export function sellerDashboard(db, user, y, m) {
   const ev = me.ev;
   const near = ranked
     .slice(Math.max(0, idx - 1), idx + 2)
-    .map((e) => ({ id: e.user.id, name: e.user.first_name, points: e.ev.points, pos: ranked.indexOf(e) + 1, me: e.user.id === user.id }));
+    .map((e) => ({ id: e.user.id, name: e.user.first_name, avatar: e.user.avatar || 0, points: e.ev.points, pos: ranked.indexOf(e) + 1, me: e.user.id === user.id }));
   const ahead = idx > 0 ? ranked[idx - 1] : null;
   return {
-    seller: { id: user.id, name: user.name, firstName: user.first_name, igl: !!user.igl },
+    seller: { id: user.id, name: user.name, firstName: user.first_name, igl: !!user.igl, avatar: user.avatar || 0 },
     refDate: ev.refDate,
     days: { total: ev.total, done: ev.done, left: ev.left, hasSchedule: ev.hasSchedule },
     pace: round1(ev.pace),
@@ -173,6 +173,7 @@ export function teamDashboard(db, viewer, storeId, y, m) {
     name: e.user.first_name,
     fullName: e.user.name,
     igl: !!e.user.igl,
+    avatar: e.user.avatar || 0,
     me: e.user.id === viewer.id,
     points: e.ev.points,
     week: e.ev.events.filter((x) => x.date > weekFrom).reduce((s, x) => s + x.points, 0),

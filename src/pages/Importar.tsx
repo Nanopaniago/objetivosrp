@@ -1,6 +1,6 @@
 import React from 'react';
-import { AlertTriangle, Calendar, Check, CheckCircle2, ChevronRight, Eye, ImageUp, Sparkles, Trophy, Undo2, Upload, UserX } from 'lucide-react';
-import { api, type Kind } from '../api';
+import { AlertTriangle, Calendar, Check, CheckCircle2, ChevronRight, Eye, FileText, ImageUp, Sparkles, Trophy, Undo2, Upload, UserX } from 'lucide-react';
+import { api, runJob, type Kind } from '../api';
 import { useApp } from '../App';
 import { MONTHS, amount, daysIn, dateOf, shortDate } from '../format';
 import { Btn, Card, CatIcon, ErrorBox, Field, IconTile, Pill, cx, inputCls, toast } from '../ui';
@@ -30,7 +30,15 @@ export default function Importar() {
   const [date, setDate] = React.useState(me.today);
   const [period, setPeriod] = React.useState<[number, number]>([year, month]);
   const [busy, setBusy] = React.useState(false);
+  const [elapsed, setElapsed] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
+  const isPdf = !!file && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name));
+  React.useEffect(() => {
+    if (!busy) return;
+    setElapsed(0);
+    const t = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [busy]);
   const [draft, setDraft] = React.useState<{ id: number; kind: 'results'; d: ResDraft } | { id: number; kind: 'schedule'; d: SchedDraft } | null>(null);
   const [saved, setSaved] = React.useState<{ id: number; text: string } | null>(null);
   const [history, setHistory] = React.useState<HistoryRow[]>([]);
@@ -52,12 +60,12 @@ export default function Importar() {
     setBusy(true);
     setError(null);
     const fd = new FormData();
-    fd.append('image', file);
+    fd.append('file', file);
     fd.append('store_id', String(storeId));
     if (kind === 'results') fd.append('date', date);
     else { fd.append('year', String(period[0])); fd.append('month', String(period[1])); }
     try {
-      const r = await api.post<{ id: number; draft: ResDraft | SchedDraft }>(`/api/imports/${kind}`, fd);
+      const r = await runJob<{ id: number; draft: ResDraft | SchedDraft }>(`/api/imports/${kind}`, fd);
       setDraft(kind === 'results' ? { id: r.id, kind, d: r.draft as ResDraft } : { id: r.id, kind, d: r.draft as SchedDraft });
     } catch (e) {
       setError((e as Error).message);
@@ -114,8 +122,8 @@ export default function Importar() {
         </section>
       ) : draft ? (
         draft.kind === 'results'
-          ? <ReviewResults id={draft.id} d={draft.d} image={preview} onCancel={reset} onSaved={(t) => { setDraft(null); setSaved({ id: draft.id, text: t }); loadHistory(); }} />
-          : <ReviewSchedule id={draft.id} d={draft.d} image={preview} onCancel={reset} onSaved={(t) => { setDraft(null); setSaved({ id: draft.id, text: t }); loadHistory(); }} />
+          ? <ReviewResults id={draft.id} d={draft.d} image={preview} pdf={isPdf} onCancel={reset} onSaved={(t) => { setDraft(null); setSaved({ id: draft.id, text: t }); loadHistory(); }} />
+          : <ReviewSchedule id={draft.id} d={draft.d} image={preview} pdf={isPdf} onCancel={reset} onSaved={(t) => { setDraft(null); setSaved({ id: draft.id, text: t }); loadHistory(); }} />
       ) : (
         <div className="flex flex-wrap items-start gap-4">
           <Card className="flex min-w-0 flex-[3_1_480px] flex-col gap-5 p-6">
@@ -129,15 +137,15 @@ export default function Importar() {
 
             <label className={cx('flex cursor-pointer flex-col items-center gap-3 rounded-[20px] border-2 border-dashed px-6 py-10 text-center transition', file ? 'border-lime bg-limesel' : 'border-line2 bg-bg hover:border-mute2')}
               onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); pick(e.dataTransfer.files[0] || null); }}>
-              {preview ? <img src={preview} alt="Imagem escolhida" className="max-h-56 rounded-xl border border-line object-contain" /> : <IconTile icon={ImageUp} tone="lime" size={56} iconSize={28} />}
-              <strong className="text-base">{file ? file.name : 'Escolhe ou arrasta a imagem'}</strong>
-              <span className="text-sm text-mute">{kind === 'results' ? 'Captura de ecrã do relatório diário' : 'Fotografia ou captura da escala do mês'} · PNG, JPG ou WEBP</span>
-              <input type="file" accept="image/png,image/jpeg,image/webp,image/heic" className="sr-only" onChange={(e) => pick(e.target.files?.[0] || null)} />
+              {preview && !isPdf ? <img src={preview} alt="Imagem escolhida" className="max-h-56 rounded-xl border border-line object-contain" /> : <IconTile icon={isPdf ? FileText : ImageUp} tone="lime" size={56} iconSize={28} />}
+              <strong className="text-base">{file ? file.name : 'Escolhe ou arrasta a imagem ou o PDF'}</strong>
+              <span className="text-sm text-mute">{kind === 'results' ? 'Captura ou PDF do relatório diário' : 'Fotografia, captura ou PDF da escala do mês'} · PNG, JPG, WEBP ou PDF</span>
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/heic,application/pdf,.pdf" className="sr-only" onChange={(e) => pick(e.target.files?.[0] || null)} />
             </label>
 
             <div className="flex flex-wrap items-end gap-3">
               {kind === 'results' ? (
-                <Field label="Data do relatório" hint="Se a data aparecer na imagem, usamos essa.">
+                <Field label="Data do relatório" hint="Se a data aparecer no ficheiro, usamos essa.">
                   <input type="date" className={inputCls} value={date} max={me.today} onChange={(e) => setDate(e.target.value)} />
                 </Field>
               ) : (
@@ -147,9 +155,9 @@ export default function Importar() {
                   </select>
                 </Field>
               )}
-              <Btn variant="primary" icon={Sparkles} onClick={read} disabled={!file} loading={busy} className="ml-auto">{busy ? 'A ler a imagem…' : 'Ler imagem'}</Btn>
+              <Btn variant="primary" icon={Sparkles} onClick={read} disabled={!file} loading={busy} className="ml-auto">{busy ? 'A ler…' : isPdf ? 'Ler PDF' : 'Ler imagem'}</Btn>
             </div>
-            {busy && <p className="m-0 text-sm text-mute" role="status">Isto demora uns segundos. Não feches a página.</p>}
+            {busy && <p className="m-0 text-sm text-mute" role="status">A ler a tabela… {elapsed}s. Pode demorar até um minuto ou dois; não feches a página.</p>}
             {error && <ErrorBox message={error} />}
           </Card>
 
@@ -178,7 +186,7 @@ export default function Importar() {
 
 // --------------------------------------------------------------- results
 
-function ReviewResults({ id, d, image, onCancel, onSaved }: { id: number; d: ResDraft; image: string | null; onCancel: () => void; onSaved: (text: string) => void }) {
+function ReviewResults({ id, d, image, pdf, onCancel, onSaved }: { id: number; d: ResDraft; image: string | null; pdf: boolean; onCancel: () => void; onSaved: (text: string) => void }) {
   const [rows, setRows] = React.useState<ResRow[]>(() => d.rows.map((r) => ({ ...r, values: Object.fromEntries(Object.entries(r.values).map(([k, v]) => [k, { ...v }])) })));
   const [date, setDate] = React.useState(d.date);
   const [acked, setAcked] = React.useState<Set<string>>(new Set());
@@ -348,7 +356,7 @@ function ReviewResults({ id, d, image, onCancel, onSaved }: { id: number; d: Res
           <Field label="Data dos resultados">
             <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
           </Field>
-          <img src={image || `/api/imports/${id}/image`} alt="Imagem carregada" className="w-full rounded-xl border border-line" />
+          <SourcePreview src={image || `/api/imports/${id}/image`} pdf={pdf} className="w-full" />
         </Card>
         <Card className="flex flex-col p-4.5">
           <strong className="mb-2 text-[15px]">Verificações</strong>
@@ -369,7 +377,7 @@ function ReviewResults({ id, d, image, onCancel, onSaved }: { id: number; d: Res
 
 const CYCLE: (Kind | null)[] = ['A', 'F', 'L', 'O', 'V', null];
 
-function ReviewSchedule({ id, d, image, onCancel, onSaved }: { id: number; d: SchedDraft; image: string | null; onCancel: () => void; onSaved: (text: string) => void }) {
+function ReviewSchedule({ id, d, image, pdf, onCancel, onSaved }: { id: number; d: SchedDraft; image: string | null; pdf: boolean; onCancel: () => void; onSaved: (text: string) => void }) {
   const [rows, setRows] = React.useState<SchedRow[]>(() => d.rows.map((r) => ({ ...r, days: { ...r.days } })));
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -465,7 +473,7 @@ function ReviewSchedule({ id, d, image, onCancel, onSaved }: { id: number; d: Sc
           {d.issues.filter((x) => x.kind === 'month' || x.kind === 'freeShift').map((x, i) => <div key={i} className="border-t border-line py-2 text-xs text-warn">{x.text}</div>)}
         </Card>
         <Card className="flex min-w-0 flex-[1_1_320px] p-4.5">
-          <img src={image || `/api/imports/${id}/image`} alt="Imagem carregada" className="max-h-72 w-full rounded-xl border border-line object-contain" />
+          <SourcePreview src={image || `/api/imports/${id}/image`} pdf={pdf} className="max-h-72 w-full object-contain" />
         </Card>
       </div>
 
@@ -477,6 +485,17 @@ function ReviewSchedule({ id, d, image, onCancel, onSaved }: { id: number; d: Sc
           <Btn variant="primary" icon={Check} disabled={people.length > 0} loading={busy} onClick={commit}>Confirmar e gravar</Btn>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** The uploaded file shown next to the review: an image, or the PDF in an embedded viewer. */
+function SourcePreview({ src, pdf, className }: { src: string; pdf: boolean; className?: string }) {
+  if (!pdf) return <img src={src} alt="Ficheiro carregado" className={cx('rounded-xl border border-line', className)} />;
+  return (
+    <div className="flex w-full flex-col gap-2">
+      <iframe src={src} title="PDF carregado" className="h-[420px] w-full rounded-xl border border-line bg-white" />
+      <a href={src} target="_blank" rel="noreferrer" className="text-xs font-semibold text-lime2">Abrir o PDF noutra janela</a>
     </div>
   );
 }

@@ -45,7 +45,7 @@ export function requireAuth(db) {
     if (!token) throw new HTTPException(401, { message: 'Sessão terminada. Entra novamente.' });
     const row = db
       .prepare(
-        `SELECT u.id, u.name, u.first_name, u.username, u.role, u.store_id, u.igl, u.active, s.expires_at
+        `SELECT u.id, u.name, u.first_name, u.username, u.role, u.store_id, u.igl, u.active, u.avatar, s.expires_at
          FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?`
       )
       .get(token);
